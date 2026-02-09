@@ -62,3 +62,45 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Deploy ke Render
+
+Project ini sudah disiapkan dengan blueprint `render.yaml`.
+
+### 1) Push repo ke GitHub
+Pastikan file berikut ikut ter-push:
+- `render.yaml`
+- `scripts/render-start.sh`
+
+### 2) Buat Web Service di Render (Blueprint)
+- Di Render, pilih **New +** -> **Blueprint**
+- Pilih repo ini
+- Render akan membaca `render.yaml` otomatis
+
+### 3) Isi Environment Variables (yang `sync: false`)
+Wajib diisi:
+- `APP_KEY` (format Laravel, contoh: `base64:...`)
+- `APP_URL` (URL service Render Anda)
+- `DB_HOST` (Neon direct host, disarankan bukan `-pooler` untuk migrate)
+- `DB_DATABASE`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+
+Sudah diset default di blueprint:
+- `DB_CONNECTION=pgsql`
+- `DB_PORT=5432`
+- `DB_SSLMODE=require`
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `RUN_MIGRATIONS=true`
+
+### 4) Deploy
+- Runtime: `docker` (build dari `Dockerfile`)
+- Saat container start, script `scripts/render-entrypoint.sh` akan:
+  - clear cache Laravel
+  - jalankan `php artisan migrate --force` (jika `RUN_MIGRATIONS=true`)
+  - start Apache
+
+### 5) Catatan Neon
+- Untuk proses migration/seeding, endpoint Neon **direct** lebih aman daripada `-pooler`.
+- Disarankan tetap pakai host direct di Render agar migrasi stabil.

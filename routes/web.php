@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', [EngagementPlannerController::class, 'index'])->name('engagement.index');
+Route::get('/healthz', function () {
+    return response('ok', 200);
+})->name('healthz');
 
 Route::get('/guests', [EngagementPlannerController::class, 'guestsPage'])->name('guests.index');
 Route::post('/guests', [EngagementPlannerController::class, 'storeGuest'])->name('guests.store');
