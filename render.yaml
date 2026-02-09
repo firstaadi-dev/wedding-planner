@@ -1,12 +1,9 @@
 services:
   - type: web
     name: wedding-planner
-    env: php
+    runtime: docker
     plan: free
-    rootDir: .
-    buildCommand: "composer install --no-dev --optimize-autoloader"
-    preDeployCommand: "php artisan migrate --force --seed"
-    startCommand: "./scripts/render-start.sh"
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /guests
     envVars:
       - key: APP_ENV
@@ -39,3 +36,5 @@ services:
         sync: false
       - key: DB_PASSWORD
         sync: false
+      - key: RUN_MIGRATIONS
+        value: "true"
