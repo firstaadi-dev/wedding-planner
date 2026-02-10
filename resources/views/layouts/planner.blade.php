@@ -1438,6 +1438,16 @@
         return results;
     }
 
+    function findRowsForDbTableRecord(dbTable, recordId) {
+        var rows = [];
+        findSheetTablesForDbTable(dbTable).forEach(function (table) {
+            table.querySelectorAll('tr[data-row][data-id="' + recordId + '"]').forEach(function (row) {
+                rows.push(row);
+            });
+        });
+        return rows;
+    }
+
     function findGuestTable(eventType, side) {
         return document.querySelector(
             'table[data-sheet-name="guests"][data-event-type="' + eventType + '"][data-side="' + side + '"]'
@@ -1478,7 +1488,7 @@
     }
 
     function applyRemoteUpdate(dbTable, recordId, data) {
-        var rows = document.querySelectorAll('tr[data-row][data-id="' + recordId + '"]');
+        var rows = findRowsForDbTableRecord(dbTable, recordId);
 
         rows.forEach(function (row) {
             if (row.contains(document.activeElement)) {
@@ -1541,7 +1551,7 @@
     }
 
     function applyRemoteDelete(dbTable, recordId) {
-        var rows = document.querySelectorAll('tr[data-row][data-id="' + recordId + '"]');
+        var rows = findRowsForDbTableRecord(dbTable, recordId);
         rows.forEach(function (row) {
             var parentTable = row.closest('[data-sheet-table]');
             row.remove();
@@ -1557,7 +1567,12 @@
         var existingInCorrect = correctTable.querySelector('tr[data-row][data-id="' + recordId + '"]');
         if (existingInCorrect) return;
 
-        var rowElsewhere = document.querySelector('tr[data-row][data-id="' + recordId + '"]');
+        var rowElsewhere = null;
+        findSheetTablesForDbTable('guests').forEach(function (table) {
+            if (rowElsewhere || table === correctTable) return;
+            var row = table.querySelector('tr[data-row][data-id="' + recordId + '"]');
+            if (row) rowElsewhere = row;
+        });
         if (!rowElsewhere) return;
 
         var oldTable = rowElsewhere.closest('[data-sheet-table]');
@@ -1590,7 +1605,8 @@
         clearTimeout(reorderBatchTimer);
         reorderBatchTimer = setTimeout(function () {
             reorderBatchQueue.forEach(function (item) {
-                var row = document.querySelector('tr[data-row][data-id="' + item.id + '"]');
+                var rows = findRowsForDbTableRecord('guests', item.id);
+                var row = rows.length ? rows[0] : null;
                 if (row) {
                     var sortInput = row.querySelector('[data-field="sort_order"]');
                     if (sortInput) sortInput.value = String(item.sort_order);
@@ -1689,7 +1705,8 @@
                     var data = payload.data;
 
                     if (dbTable === 'guests' && op === 'UPDATE' && data && data.sort_order !== undefined) {
-                        var existingRow = document.querySelector('tr[data-row][data-id="' + recordId + '"]');
+                        var existingRows = findRowsForDbTableRecord('guests', recordId);
+                        var existingRow = existingRows.length ? existingRows[0] : null;
                         var sortInput = existingRow ? existingRow.querySelector('[data-field="sort_order"]') : null;
                         var oldSort = sortInput ? sortInput.value : null;
                         if (oldSort !== null && String(data.sort_order) !== oldSort) {
