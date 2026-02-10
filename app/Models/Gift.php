@@ -14,6 +14,8 @@ class Gift extends Model
         'brand',
         'price',
         'paid_amount',
+        'down_payment',
+        'sort_order',
         'link',
         'status',
         'notes',
@@ -22,6 +24,8 @@ class Gift extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'down_payment' => 'decimal:2',
+        'sort_order' => 'integer',
         'budget' => 'decimal:2',
     ];
 }

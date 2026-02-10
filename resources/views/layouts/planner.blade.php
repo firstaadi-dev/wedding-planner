@@ -687,7 +687,9 @@
 
     function focusNextRowCell(table, row, input) {
         const fallbackField = input.dataset.field;
-        const preferredField = table.dataset.enterNextField || fallbackField;
+        const preferredField = row.dataset.newRow === '1'
+            ? (table.dataset.enterNextField || fallbackField)
+            : fallbackField;
         if (!preferredField) return;
 
         let nextRow = row.nextElementSibling;
@@ -777,7 +779,7 @@
             startX = event.touches[0].clientX;
             startY = event.touches[0].clientY;
             currentX = 0;
-            tracking = true;gunakan
+            tracking = true;
             swiping = false;
             row.classList.remove('row-swipe-armed');
         }, { passive: true });
@@ -836,7 +838,9 @@
                 input.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
                         event.preventDefault();
-                        row.dataset.pendingEnterField = table.dataset.enterNextField || input.dataset.field || '';
+                        row.dataset.pendingEnterField = row.dataset.newRow === '1'
+                            ? (table.dataset.enterNextField || input.dataset.field || '')
+                            : (input.dataset.field || '');
                         input.blur();
                         setTimeout(function () {
                             focusNextRowCell(table, row, input);

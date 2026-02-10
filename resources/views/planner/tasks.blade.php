@@ -20,6 +20,7 @@
                     <th>Vendor</th>
                     <th>Price (Rp)</th>
                     <th>Paid Amount (Rp)</th>
+                    <th>DP (Rp)</th>
                     <th>Remaining Amount (Rp)</th>
                     <th>Status</th>
                     <th>Start Date</th>
@@ -35,6 +36,7 @@
                         <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" value="{{ $task->vendor }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="{{ $task->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $task->paid_amount ?? 0 }}"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="{{ $task->down_payment ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="{{ $task->remaining_amount ?? 0 }}" readonly></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="task_status">
@@ -55,6 +57,7 @@
                     <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" placeholder="Vendor"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
+                    <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="Rp0" readonly></td>
                     <td>
                         <select class="form-select form-select-sm sheet-cell" data-field="task_status">
@@ -76,6 +79,7 @@
                         <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" placeholder="Vendor"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="Rp0" readonly></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="task_status">
@@ -154,14 +158,14 @@
         }
 
         function recalcTaskRemaining(row) {
-            const priceInput = row.querySelector('.task-price');
             const paidInput = row.querySelector('.task-paid');
+            const dpInput = row.querySelector('.task-dp');
             const remInput = row.querySelector('.task-remaining');
-            if (!priceInput || !paidInput || !remInput) return;
+            if (!paidInput || !dpInput || !remInput) return;
 
-            const price = parseCurrencyIdr(priceInput.value);
             const paid = parseCurrencyIdr(paidInput.value);
-            const remaining = Math.max(price - paid, 0);
+            const dp = parseCurrencyIdr(dpInput.value);
+            const remaining = Math.max(paid - dp, 0);
             remInput.value = formatCurrencyIdr(remaining);
         }
 
@@ -174,7 +178,7 @@
                     bindCurrencyInput(input);
                 });
 
-                row.querySelectorAll('.task-price, .task-paid').forEach(function (input) {
+                row.querySelectorAll('.task-paid, .task-dp').forEach(function (input) {
                     input.addEventListener('input', function () {
                         recalcTaskRemaining(row);
                     });

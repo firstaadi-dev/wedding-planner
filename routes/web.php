@@ -33,6 +33,7 @@ Route::delete('/tasks/{task}', [EngagementPlannerController::class, 'destroyTask
 
 Route::get('/gifts', [EngagementPlannerController::class, 'giftsPage'])->name('gifts.index');
 Route::post('/gifts', [EngagementPlannerController::class, 'storeGift'])->name('gifts.store');
+Route::post('/gifts/reorder', [EngagementPlannerController::class, 'reorderGifts'])->name('gifts.reorder');
 Route::put('/gifts/{gift}', [EngagementPlannerController::class, 'updateGift'])->name('gifts.update');
 Route::delete('/gifts/{gift}', [EngagementPlannerController::class, 'destroyGift'])->name('gifts.destroy');
 

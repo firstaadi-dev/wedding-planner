@@ -14,6 +14,7 @@ class EngagementTask extends Model
         'vendor',
         'price',
         'paid_amount',
+        'down_payment',
         'remaining_amount',
         'task_status',
         'start_date',
@@ -26,6 +27,7 @@ class EngagementTask extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'down_payment' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
         'start_date' => 'date',
         'due_date' => 'date',
