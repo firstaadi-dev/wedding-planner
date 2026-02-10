@@ -5,8 +5,8 @@
 
 @section('content')
 <div class="row g-3 mb-4">
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Open (Not Started/In Progress)</div><div class="metric-value">{{ $stats['openTasks'] }}</div></div></div>
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Done</div><div class="metric-value">{{ $stats['doneTasks'] }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Open (Not Started/In Progress)</div><div class="metric-value" id="task-open-count">{{ $stats['openTasks'] }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Done</div><div class="metric-value" id="task-done-count">{{ $stats['doneTasks'] }}</div></div></div>
 </div>
 
 <div class="planner-card">
@@ -191,14 +191,46 @@
             });
         }
 
+        function recalcTaskStats() {
+            var rows = document.querySelectorAll('table[data-create-url="{{ route('tasks.store') }}"] tbody tr[data-row][data-id]');
+            var openCount = 0;
+            var doneCount = 0;
+
+            rows.forEach(function (row) {
+                var statusInput = row.querySelector('[data-field="task_status"]');
+                if (!statusInput) return;
+
+                if (statusInput.value === 'done') {
+                    doneCount += 1;
+                } else if (statusInput.value === 'not_started' || statusInput.value === 'in_progress') {
+                    openCount += 1;
+                }
+            });
+
+            var openEl = document.getElementById('task-open-count');
+            var doneEl = document.getElementById('task-done-count');
+            if (openEl) openEl.textContent = String(openCount);
+            if (doneEl) doneEl.textContent = String(doneCount);
+        }
+
         document.addEventListener('sheet:changed', function (event) {
             const table = event.detail && event.detail.table;
             if (table && table.dataset.createUrl === '{{ route('tasks.store') }}') {
                 bindTaskRows();
+                recalcTaskStats();
+            }
+        });
+
+        document.addEventListener('change', function (event) {
+            var target = event.target;
+            if (!target) return;
+            if (target.dataset.field === 'task_status' && target.closest('table[data-create-url="{{ route('tasks.store') }}"]')) {
+                recalcTaskStats();
             }
         });
 
         bindTaskRows();
+        recalcTaskStats();
     })();
 </script>
 @endpush
