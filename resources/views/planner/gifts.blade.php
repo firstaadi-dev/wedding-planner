@@ -25,6 +25,7 @@
                     <th>Link</th>
                     <th>Keterangan</th>
                     <th>Status</th>
+                    <th class="row-actions">Aksi</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -46,10 +47,10 @@
                     @endphp
                     @if($groupLabel !== $currentGroup || $groupKey !== $currentGroupKey)
                         @if($groupIndex > 0)
-                            <tr class="gift-group-gap"><td colspan="10"></td></tr>
+                            <tr class="gift-group-gap"><td colspan="11"></td></tr>
                         @endif
                         <tr class="gift-group-separator" data-group-key="{{ $groupKey }}">
-                            <td colspan="10">
+                            <td colspan="11">
                                 <div class="gift-group-header">
                                     <div class="gift-group-title-wrap">
                                         <span class="gift-group-title">{{ $groupLabel }}</span>
@@ -98,6 +99,14 @@
                                 <option value="complete" {{ $gift->status === 'complete' ? 'selected' : '' }}>Complete</option>
                             </select>
                         </td>
+                        <td class="row-actions">
+                            <details class="row-menu">
+                                <summary>...</summary>
+                                <div class="row-menu-panel">
+                                    <button type="button" data-delete-row>Hapus</button>
+                                </div>
+                            </details>
+                        </td>
                     </tr>
                 @endforeach
 
@@ -127,6 +136,7 @@
                             <option value="complete">Complete</option>
                         </select>
                     </td>
+                    <td class="row-actions"></td>
                 </tr>
                 </tbody>
 
@@ -157,6 +167,7 @@
                                 <option value="complete">Complete</option>
                             </select>
                         </td>
+                        <td class="row-actions"></td>
                     </tr>
                 </template>
             </table>
@@ -362,7 +373,7 @@
             var tr = document.createElement('tr');
             tr.className = 'gift-group-gap';
             var td = document.createElement('td');
-            td.colSpan = 10;
+            td.colSpan = 11;
             tr.appendChild(td);
             return tr;
         }
@@ -372,7 +383,7 @@
             tr.className = 'gift-group-separator';
             tr.dataset.groupKey = groupKey;
             var td = document.createElement('td');
-            td.colSpan = 10;
+            td.colSpan = 11;
             td.innerHTML = '' +
                 '<div class="gift-group-header">' +
                     '<div class="gift-group-title-wrap">' +
