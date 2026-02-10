@@ -240,7 +240,12 @@
             letter-spacing: 0.5px;
             background: var(--surface);
             text-align: center;
+            vertical-align: middle;
+            line-height: 1.25;
             padding: 0.7rem 0.6rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .table-clean td {
@@ -249,6 +254,9 @@
             border-top-width: 1px;
             border-bottom-width: 1px;
             padding: 0.45rem 0.5rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .table-clean > :not(caption) > * > * {
@@ -301,6 +309,19 @@
 
         .sheet-cell::placeholder {
             color: #b0a89e;
+        }
+
+        textarea.sheet-cell {
+            resize: none;
+            overflow: hidden;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.25;
+            min-height: 31px;
+        }
+
+        .name-cell textarea.sheet-cell {
+            flex: 1 1 auto;
         }
 
         .sheet-tone-invited,
@@ -940,6 +961,12 @@
         });
     }
 
+    function autoGrowTextarea(textarea) {
+        if (!textarea || textarea.tagName !== 'TEXTAREA') return;
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(textarea.scrollHeight, 31) + 'px';
+    }
+
     function appendInlineNewRow(table, config) {
         var existingInline = table.querySelector('tbody tr[data-row][data-new-row="1"]');
         if (existingInline) return existingInline;
@@ -981,6 +1008,15 @@
         if (row.dataset.fieldsBound !== '1') {
             row.dataset.fieldsBound = '1';
             row.querySelectorAll('[data-field]').forEach(function (input) {
+                if (input.tagName === 'TEXTAREA') {
+                    autoGrowTextarea(input);
+                    if (input.dataset.autogrowBound !== '1') {
+                        input.dataset.autogrowBound = '1';
+                        input.addEventListener('input', function () {
+                            autoGrowTextarea(input);
+                        });
+                    }
+                }
                 if (input.tagName === 'SELECT') {
                     applySelectTone(input);
                 }
@@ -1103,6 +1139,9 @@
         }
 
         input.value = raw;
+        if (input.tagName === 'TEXTAREA') {
+            autoGrowTextarea(input);
+        }
     }
 
     async function runWithConcurrency(items, limit, worker) {

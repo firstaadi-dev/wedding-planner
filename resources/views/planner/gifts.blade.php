@@ -75,11 +75,11 @@
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="{{ $gift->group_sort_order }}">
                             <div class="name-cell">
                                 <span class="drag-handle">::</span>
-                                <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $gift->name }}">
+                                <textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="name">{{ $gift->name }}</textarea>
                             </div>
                         </td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="brand" value="{{ $gift->brand }}"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="group_name" value="{{ $gift->group_name }}" placeholder="Nama group"></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="brand">{{ $gift->brand }}</textarea></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group">{{ $gift->group_name }}</textarea></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="{{ $gift->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $gift->paid_amount ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="{{ $gift->down_payment ?? 0 }}"></td>
@@ -90,7 +90,7 @@
                                 <a class="btn btn-outline-secondary" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru">↗</a>
                             </div>
                         </td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="notes" value="{{ $gift->notes }}"></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="notes">{{ $gift->notes }}</textarea></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="status">
                                 <option value="not_started" {{ $gift->status === 'not_started' ? 'selected' : '' }}>Not Started</option>
@@ -105,10 +105,10 @@
                     <td>
                         <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                         <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
-                        <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item">
+                        <textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item"></textarea>
                     </td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></td>
+                    <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></textarea></td>
+                    <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></textarea></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
@@ -119,7 +119,7 @@
                             <a class="btn btn-outline-secondary disabled" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru" aria-disabled="true" tabindex="-1">↗</a>
                         </div>
                     </td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></td>
+                    <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></textarea></td>
                     <td>
                         <select class="form-select form-select-sm sheet-cell" data-field="status">
                             <option value="not_started" selected>Not Started</option>
@@ -135,10 +135,10 @@
                         <td>
                             <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
-                            <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item">
+                            <textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item"></textarea>
                         </td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></textarea></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></textarea></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
@@ -149,7 +149,7 @@
                                 <a class="btn btn-outline-secondary disabled" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru" aria-disabled="true" tabindex="-1">↗</a>
                             </div>
                         </td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></td>
+                        <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></textarea></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="status">
                                 <option value="not_started" selected>Not Started</option>
@@ -584,7 +584,7 @@
 
         function ensureGiftRowDecorations() {
             document.querySelectorAll('table[data-sheet-name="gifts"] tr[data-row][data-id]').forEach(function (row) {
-                var nameInput = row.querySelector('input[data-field="name"]:not([type="hidden"])');
+                var nameInput = row.querySelector('[data-field="name"]:not([type="hidden"])');
                 if (!nameInput) return;
                 if (nameInput.closest('.name-cell')) return;
 
