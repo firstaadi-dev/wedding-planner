@@ -12,16 +12,16 @@
     <div class="card-header pt-3 px-3 fw-semibold">Daftar Seserahan</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
-            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="gifts" data-reorder-url="{{ route('gifts.reorder') }}" data-reorder-groups-url="{{ route('gifts.reorder-groups') }}" data-enter-next-field="name" data-create-url="{{ route('gifts.store') }}" data-update-url="/gifts/__ID__" data-delete-url="/gifts/__ID__" data-required="name,status">
+            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="gifts" data-reorder-url="{{ route('gifts.reorder') }}" data-reorder-groups-url="{{ route('gifts.reorder-groups') }}" data-enter-next-field="name" data-create-url="{{ route('gifts.store') }}" data-bulk-create-url="{{ route('gifts.bulk-store') }}" data-bulk-delete-url="{{ route('gifts.bulk-destroy') }}" data-update-url="/gifts/__ID__" data-delete-url="/gifts/__ID__" data-required="name,status">
                 <thead>
                 <tr>
                     <th>Nama</th>
                     <th>Merk</th>
                     <th>Group</th>
-                    <th>Price (Rp)</th>
-                    <th>Paid Amount (Rp)</th>
-                    <th>DP (Rp)</th>
-                    <th>Remaining Amount (Rp)</th>
+                    <th>Harga Awal (Rp)</th>
+                    <th>Harga Final (Rp)</th>
+                    <th>Sudah Dibayar (Rp)</th>
+                    <th>Sisa Pelunasan (Rp)</th>
                     <th>Link</th>
                     <th>Keterangan</th>
                     <th>Status</th>

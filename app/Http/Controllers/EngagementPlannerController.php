@@ -8,6 +8,7 @@ use App\Models\Gift;
 use App\Models\Guest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class EngagementPlannerController extends Controller
@@ -153,14 +154,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'side' => ['required', 'in:cpp,cpw'],
-            'event_type' => ['required', 'in:lamaran,resepsi'],
-            'attendance_status' => ['required', 'in:invited,attending,not_attending'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->guestRules());
 
         $validated['sort_order'] = $this->nextGuestSortOrder($validated['event_type'], $validated['side']);
 
@@ -173,15 +167,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'side' => ['required', 'in:cpp,cpw'],
-            'event_type' => ['required', 'in:lamaran,resepsi'],
-            'attendance_status' => ['required', 'in:invited,attending,not_attending'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'notes' => ['nullable', 'string'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-        ]);
+        $validated = $request->validate($this->guestRules());
 
         $sideChanged = $validated['side'] !== $guest->side || $validated['event_type'] !== $guest->event_type;
         if ($sideChanged && !isset($validated['sort_order'])) {
@@ -276,27 +262,51 @@ class EngagementPlannerController extends Controller
         return $this->respondSuccess($request, 'Undangan dihapus.');
     }
 
+    public function storeGuestsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $rows = $this->validateBulkRows($request, $this->guestRules());
+        $records = [];
+
+        DB::transaction(function () use (&$records, $rows) {
+            $nextSortMap = [];
+            foreach ($rows as $validated) {
+                $pairKey = $validated['event_type'] . '|' . $validated['side'];
+                if (!isset($nextSortMap[$pairKey])) {
+                    $max = (int) Guest::query()
+                        ->where('event_type', $validated['event_type'])
+                        ->where('side', $validated['side'])
+                        ->max('sort_order');
+                    $nextSortMap[$pairKey] = $max + 1;
+                }
+                $validated['sort_order'] = $nextSortMap[$pairKey];
+                $nextSortMap[$pairKey]++;
+                $records[] = Guest::create($validated);
+            }
+        });
+
+        return $this->respondSuccess($request, 'Undangan bulk berhasil ditambahkan.', ['records' => $records]);
+    }
+
+    public function destroyGuestsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $ids = $this->validateBulkIds($request);
+        if (empty($ids)) {
+            return $this->respondSuccess($request, 'Tidak ada data undangan yang dihapus.', ['deleted_count' => 0]);
+        }
+
+        $deletedCount = Guest::query()->whereIn('id', $ids)->delete();
+
+        return $this->respondSuccess($request, 'Undangan terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
     public function storeTask(Request $request)
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'vendor' => ['nullable', 'string', 'max:255'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
-            'down_payment' => ['nullable', 'numeric', 'min:0'],
-            'task_status' => ['required', 'in:not_started,in_progress,done'],
-            'start_date' => ['nullable', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'finish_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $paid = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : 0.0;
-        $dp = isset($validated['down_payment']) ? (float) $validated['down_payment'] : 0.0;
-        $validated['remaining_amount'] = max($paid - $dp, 0);
-        $validated['status'] = $validated['task_status'] === 'done' ? 'done' : 'pending';
+        $validated = $request->validate($this->taskRules());
+        $validated = $this->prepareTaskPayload($validated);
 
         $task = DB::transaction(function () use ($validated) {
             $task = EngagementTask::create($validated);
@@ -312,23 +322,8 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'vendor' => ['nullable', 'string', 'max:255'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
-            'down_payment' => ['nullable', 'numeric', 'min:0'],
-            'task_status' => ['required', 'in:not_started,in_progress,done'],
-            'start_date' => ['nullable', 'date'],
-            'due_date' => ['nullable', 'date'],
-            'finish_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $paid = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : 0.0;
-        $dp = isset($validated['down_payment']) ? (float) $validated['down_payment'] : 0.0;
-        $validated['remaining_amount'] = max($paid - $dp, 0);
-        $validated['status'] = $validated['task_status'] === 'done' ? 'done' : 'pending';
+        $validated = $request->validate($this->taskRules());
+        $validated = $this->prepareTaskPayload($validated);
 
         DB::transaction(function () use ($task, $validated) {
             $task->update($validated);
@@ -349,30 +344,47 @@ class EngagementPlannerController extends Controller
         return $this->respondSuccess($request, 'Task dihapus.');
     }
 
+    public function storeTasksBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $rows = $this->validateBulkRows($request, $this->taskRules());
+        $records = [];
+
+        DB::transaction(function () use (&$records, $rows) {
+            foreach ($rows as $validated) {
+                $payload = $this->prepareTaskPayload($validated);
+                $task = EngagementTask::create($payload);
+                $this->syncAutoExpenseFromTask($task);
+                $records[] = $task;
+            }
+        });
+
+        return $this->respondSuccess($request, 'Task bulk berhasil ditambahkan.', ['records' => $records]);
+    }
+
+    public function destroyTasksBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $ids = $this->validateBulkIds($request);
+        if (empty($ids)) {
+            return $this->respondSuccess($request, 'Tidak ada task yang dihapus.', ['deleted_count' => 0]);
+        }
+
+        $deletedCount = 0;
+        DB::transaction(function () use ($ids, &$deletedCount) {
+            Expense::query()->where('source_type', 'task')->whereIn('source_id', $ids)->delete();
+            $deletedCount = EngagementTask::query()->whereIn('id', $ids)->delete();
+        });
+
+        return $this->respondSuccess($request, 'Task terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
     public function storeGift(Request $request)
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'brand' => ['nullable', 'string', 'max:255'],
-            'group_name' => ['nullable', 'string', 'max:150'],
-            'group_sort_order' => ['nullable', 'integer', 'min:0'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
-            'down_payment' => ['nullable', 'numeric', 'min:0'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'link' => ['nullable', 'string', 'max:2048'],
-            'status' => ['required', 'in:not_started,on_delivery,complete'],
-            'notes' => ['nullable', 'string'],
-        ]);
-        $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
-        if (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
-            $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name']);
-        }
-        if (!isset($validated['sort_order']) || (int) $validated['sort_order'] <= 0) {
-            $validated['sort_order'] = $this->nextGiftSortOrder();
-        }
+        $validated = $request->validate($this->giftRules());
+        $validated = $this->normalizeGiftPayload($validated);
 
         $gift = DB::transaction(function () use ($validated) {
             $gift = Gift::create($validated);
@@ -388,26 +400,8 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'brand' => ['nullable', 'string', 'max:255'],
-            'group_name' => ['nullable', 'string', 'max:150'],
-            'group_sort_order' => ['nullable', 'integer', 'min:0'],
-            'price' => ['nullable', 'numeric', 'min:0'],
-            'paid_amount' => ['nullable', 'numeric', 'min:0'],
-            'down_payment' => ['nullable', 'numeric', 'min:0'],
-            'sort_order' => ['nullable', 'integer', 'min:0'],
-            'link' => ['nullable', 'string', 'max:2048'],
-            'status' => ['required', 'in:not_started,on_delivery,complete'],
-            'notes' => ['nullable', 'string'],
-        ]);
-        $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
-        $groupChanged = $validated['group_name'] !== $this->normalizeGiftGroupName($gift->group_name);
-        if ($groupChanged) {
-            $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name'], (int) $gift->id);
-        } elseif (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
-            $validated['group_sort_order'] = (int) $gift->group_sort_order;
-        }
+        $validated = $request->validate($this->giftRules());
+        $validated = $this->normalizeGiftPayload($validated, $gift);
 
         DB::transaction(function () use ($gift, $validated) {
             $gift->update($validated);
@@ -517,17 +511,60 @@ class EngagementPlannerController extends Controller
         return $this->respondSuccess($request, 'Item seserahan dihapus.');
     }
 
+    public function storeGiftsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $rows = $this->validateBulkRows($request, $this->giftRules());
+        $records = [];
+
+        DB::transaction(function () use (&$records, $rows) {
+            $nextSortOrder = (int) Gift::max('sort_order');
+            $groupSortCache = [];
+            foreach ($rows as $validated) {
+                $payload = $validated;
+                $payload['group_name'] = $this->normalizeGiftGroupName($payload['group_name'] ?? null);
+                if (!isset($payload['sort_order']) || (int) $payload['sort_order'] <= 0) {
+                    $nextSortOrder++;
+                    $payload['sort_order'] = $nextSortOrder;
+                }
+                if (!isset($payload['group_sort_order']) || (int) $payload['group_sort_order'] <= 0) {
+                    $groupKey = $payload['group_name'] ?? '__NULL__';
+                    if (!isset($groupSortCache[$groupKey])) {
+                        $groupSortCache[$groupKey] = $this->resolveGiftGroupSortOrder($payload['group_name']);
+                    }
+                    $payload['group_sort_order'] = $groupSortCache[$groupKey];
+                }
+                $gift = Gift::create($payload);
+                $this->syncAutoExpenseFromGift($gift);
+                $records[] = $gift;
+            }
+        });
+
+        return $this->respondSuccess($request, 'Item seserahan bulk berhasil ditambahkan.', ['records' => $records]);
+    }
+
+    public function destroyGiftsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $ids = $this->validateBulkIds($request);
+        if (empty($ids)) {
+            return $this->respondSuccess($request, 'Tidak ada item seserahan yang dihapus.', ['deleted_count' => 0]);
+        }
+
+        $deletedCount = 0;
+        DB::transaction(function () use ($ids, &$deletedCount) {
+            Expense::query()->where('source_type', 'gift')->whereIn('source_id', $ids)->delete();
+            $deletedCount = Gift::query()->whereIn('id', $ids)->delete();
+        });
+
+        return $this->respondSuccess($request, 'Item seserahan terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
     public function storeExpense(Request $request)
     {
         $this->setClientId($request);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'type' => ['required', 'in:budget,expense'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->expenseRules());
         $validated = $this->mergeManualExpenseBreakdown($validated);
 
         $expense = Expense::create($validated);
@@ -545,13 +582,7 @@ class EngagementPlannerController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'type' => ['required', 'in:budget,expense'],
-            'amount' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->expenseRules());
         $validated = $this->mergeManualExpenseBreakdown($validated);
 
         $expense->update($validated);
@@ -571,6 +602,154 @@ class EngagementPlannerController extends Controller
         $expense->delete();
 
         return $this->respondSuccess($request, 'Catatan budget/expense dihapus.');
+    }
+
+    public function storeExpensesBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $rows = $this->validateBulkRows($request, $this->expenseRules());
+        $records = [];
+
+        DB::transaction(function () use (&$records, $rows) {
+            foreach ($rows as $validated) {
+                $payload = $this->mergeManualExpenseBreakdown($validated);
+                $records[] = Expense::create($payload);
+            }
+        });
+
+        return $this->respondSuccess($request, 'Catatan budget/expense bulk berhasil ditambahkan.', ['records' => $records]);
+    }
+
+    public function destroyExpensesBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $ids = $this->validateBulkIds($request);
+        if (empty($ids)) {
+            return $this->respondSuccess($request, 'Tidak ada catatan budget/expense yang dihapus.', ['deleted_count' => 0]);
+        }
+
+        $deletedCount = Expense::query()
+            ->whereIn('id', $ids)
+            ->where('entry_mode', 'manual')
+            ->delete();
+
+        return $this->respondSuccess($request, 'Catatan budget/expense terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
+    private function guestRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'side' => ['required', 'in:cpp,cpw'],
+            'event_type' => ['required', 'in:lamaran,resepsi'],
+            'attendance_status' => ['required', 'in:invited,attending,not_attending'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'notes' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+        ];
+    }
+
+    private function taskRules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'vendor' => ['nullable', 'string', 'max:255'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'down_payment' => ['nullable', 'numeric', 'min:0'],
+            'task_status' => ['required', 'in:not_started,in_progress,done'],
+            'start_date' => ['nullable', 'date'],
+            'due_date' => ['nullable', 'date'],
+            'finish_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    private function giftRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:150'],
+            'group_sort_order' => ['nullable', 'integer', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'down_payment' => ['nullable', 'numeric', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
+            'link' => ['nullable', 'string', 'max:2048'],
+            'status' => ['required', 'in:not_started,on_delivery,complete'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    private function expenseRules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'type' => ['required', 'in:budget,expense'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+
+    private function prepareTaskPayload(array $validated): array
+    {
+        $paid = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : 0.0;
+        $dp = isset($validated['down_payment']) ? (float) $validated['down_payment'] : 0.0;
+        $validated['remaining_amount'] = max($paid - $dp, 0);
+        $validated['status'] = $validated['task_status'] === 'done' ? 'done' : 'pending';
+
+        return $validated;
+    }
+
+    private function normalizeGiftPayload(array $validated, ?Gift $gift = null): array
+    {
+        $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
+        if ($gift === null) {
+            if (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
+                $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name']);
+            }
+            if (!isset($validated['sort_order']) || (int) $validated['sort_order'] <= 0) {
+                $validated['sort_order'] = $this->nextGiftSortOrder();
+            }
+
+            return $validated;
+        }
+
+        $groupChanged = $validated['group_name'] !== $this->normalizeGiftGroupName($gift->group_name);
+        if ($groupChanged) {
+            $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name'], (int) $gift->id);
+        } elseif (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
+            $validated['group_sort_order'] = (int) $gift->group_sort_order;
+        }
+
+        return $validated;
+    }
+
+    private function validateBulkRows(Request $request, array $rules): array
+    {
+        $validated = $request->validate([
+            'rows' => ['required', 'array', 'min:1', 'max:500'],
+            'rows.*' => ['array'],
+        ]);
+
+        $rows = [];
+        foreach ($validated['rows'] as $row) {
+            $rows[] = Validator::make($row, $rules)->validate();
+        }
+
+        return $rows;
+    }
+
+    private function validateBulkIds(Request $request): array
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:1000'],
+            'ids.*' => ['integer'],
+        ]);
+
+        return array_values(array_unique(array_map('intval', $validated['ids'])));
     }
 
     private function mergeManualExpenseBreakdown(array $validated): array

@@ -13,15 +13,15 @@
     <div class="card-header pt-3 px-3 fw-semibold">To-do Engagement</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
-            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-enter-next-field="title" data-create-url="{{ route('tasks.store') }}" data-update-url="/tasks/__ID__" data-delete-url="/tasks/__ID__" data-required="title,task_status">
+            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-enter-next-field="title" data-create-url="{{ route('tasks.store') }}" data-bulk-create-url="{{ route('tasks.bulk-store') }}" data-bulk-delete-url="{{ route('tasks.bulk-destroy') }}" data-update-url="/tasks/__ID__" data-delete-url="/tasks/__ID__" data-required="title,task_status">
                 <thead>
                 <tr>
                     <th>Task</th>
                     <th>Vendor</th>
-                    <th>Price (Rp)</th>
-                    <th>Paid Amount (Rp)</th>
-                    <th>DP (Rp)</th>
-                    <th>Remaining Amount (Rp)</th>
+                    <th>Harga Awal (Rp)</th>
+                    <th>Harga Final (Rp)</th>
+                    <th>Sudah Dibayar (Rp)</th>
+                    <th>Sisa Pelunasan (Rp)</th>
                     <th>Status</th>
                     <th>Start Date</th>
                     <th>Due Date</th>

@@ -275,6 +275,11 @@
             transition: transform 0.16s ease, background-color 0.15s ease;
         }
 
+        .table-clean tbody tr.row-selected td {
+            background: #e8f1ff !important;
+            box-shadow: inset 0 0 0 1px #9cb9e7;
+        }
+
         .table-clean tbody tr.row-swipe-armed td {
             background: #fde4e4 !important;
         }
@@ -437,6 +442,22 @@
             text-align: center;
         }
 
+        .bulk-delete-btn {
+            margin-left: 10px;
+            border: 1px solid #d8a6a6;
+            color: #8b2f2f;
+            background: #fff5f5;
+            border-radius: 8px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            line-height: 1.2;
+        }
+
+        .bulk-delete-btn:hover {
+            background: #ffeaea;
+        }
+
         .saving-dot {
             display: inline-block;
             width: 8px;
@@ -587,7 +608,9 @@
         </div>
     @endif
 
-    <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.</div>
+    <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.
+        <button type="button" class="bulk-delete-btn" id="bulk-delete-selected" hidden>Hapus Terpilih (0)</button>
+    </div>
 
     @yield('content')
 </div>
@@ -596,8 +619,12 @@
 (function () {
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const hint = document.querySelector('.autosave-hint');
+    const bulkDeleteButton = document.getElementById('bulk-delete-selected');
     var clientId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
     window.__clientId = clientId;
+    const tableConfigs = new WeakMap();
+    const selectedRows = new Set();
+    let lastSelectedRow = null;
 
     function setSaving(state) {
         if (!hint) return;
@@ -677,6 +704,79 @@
         document.querySelectorAll('.row-menu[open]').forEach(function (menu) {
             menu.removeAttribute('open');
         });
+    }
+
+    function rowSelectionKey(row) {
+        if (!row || !row.dataset.id) return '';
+        const table = row.closest('[data-sheet-table]');
+        const tableKey = table ? (table.dataset.createUrl || table.dataset.updateUrl || '') : '';
+        return tableKey + '::' + row.dataset.id;
+    }
+
+    function updateBulkDeleteUI() {
+        if (!bulkDeleteButton) return;
+        const count = selectedRows.size;
+        bulkDeleteButton.hidden = count === 0;
+        bulkDeleteButton.textContent = 'Hapus Terpilih (' + count + ')';
+    }
+
+    function clearSelectedRows(preserveAnchor) {
+        selectedRows.forEach(function (key) {
+            const row = document.querySelector('tr[data-row][data-id][data-select-key="' + key + '"]');
+            if (row) row.classList.remove('row-selected');
+        });
+        selectedRows.clear();
+        if (!preserveAnchor) {
+            lastSelectedRow = null;
+        }
+        updateBulkDeleteUI();
+    }
+
+    function selectRow(row, selected) {
+        const key = rowSelectionKey(row);
+        if (!key) return;
+        row.dataset.selectKey = key;
+        if (selected) {
+            selectedRows.add(key);
+            row.classList.add('row-selected');
+        } else {
+            selectedRows.delete(key);
+            row.classList.remove('row-selected');
+        }
+    }
+
+    function toggleRowSelection(row) {
+        const key = rowSelectionKey(row);
+        if (!key) return;
+        const selected = selectedRows.has(key);
+        selectRow(row, !selected);
+        lastSelectedRow = row;
+        updateBulkDeleteUI();
+    }
+
+    function selectRangeRows(anchorRow, targetRow) {
+        if (!anchorRow || !targetRow) return;
+        const table = targetRow.closest('[data-sheet-table]');
+        if (!table) return;
+        if (anchorRow.closest('[data-sheet-table]') !== table) return;
+
+        const rows = Array.from(table.querySelectorAll('tbody tr[data-row][data-id]'));
+        const start = rows.indexOf(anchorRow);
+        const end = rows.indexOf(targetRow);
+        if (start < 0 || end < 0) return;
+
+        const from = Math.min(start, end);
+        const to = Math.max(start, end);
+        for (let i = from; i <= to; i++) {
+            selectRow(rows[i], true);
+        }
+        lastSelectedRow = targetRow;
+        updateBulkDeleteUI();
+    }
+
+    function shouldHandleRowSelectionClick(event) {
+        if (!event || !event.target) return false;
+        return !event.target.closest('input, select, textarea, button, a, details, summary, [data-open-link], [data-delete-row]');
     }
 
     function emitSheetChanged(table) {
@@ -840,6 +940,43 @@
         });
     }
 
+    function appendInlineNewRow(table, config) {
+        var existingInline = table.querySelector('tbody tr[data-row][data-new-row="1"]');
+        if (existingInline) return existingInline;
+        var newRow = buildNewRow(table);
+        if (!newRow) return null;
+        table.querySelector('tbody').appendChild(newRow);
+        registerRowHandlers(table, newRow, config);
+        return newRow;
+    }
+
+    function finalizeCreatedRow(table, row, config, record, snapshotData) {
+        row.dataset.newRow = '0';
+        row.dataset.id = String(record.id);
+        row.dataset.snapshot = encodeSnapshot(snapshotData || collectRow(row));
+        row.dataset.creating = '0';
+        row.classList.remove('inline-add-row');
+        mountDeleteMenu(row);
+        bindDeleteHandler(table, row, config);
+    }
+
+    async function bulkCreateRows(table, rows, config) {
+        if (!rows.length || !config.bulkCreateUrl) return;
+        var payloadRows = rows.map(function (row) {
+            return collectRow(row);
+        });
+        var result = await requestJson(config.bulkCreateUrl, 'POST', { rows: payloadRows });
+        var records = (result && Array.isArray(result.records)) ? result.records : [];
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var record = records[i];
+            if (!record || !record.id) continue;
+            finalizeCreatedRow(table, row, config, record, payloadRows[i]);
+        }
+        appendInlineNewRow(table, config);
+        emitSheetChanged(table);
+    }
+
     function registerRowHandlers(table, row, config) {
         if (row.dataset.fieldsBound !== '1') {
             row.dataset.fieldsBound = '1';
@@ -874,11 +1011,181 @@
                     }
                     syncRow(table, row, config).catch(console.error);
                 });
+
+                input.addEventListener('paste', function (event) {
+                    handleSpreadsheetPaste(event, table, row, input, config).catch(console.error);
+                });
+            });
+        }
+
+        if (row.dataset.selectBound !== '1') {
+            row.dataset.selectBound = '1';
+            row.addEventListener('click', function (event) {
+                if (!row.dataset.id || row.dataset.newRow === '1') return;
+                if (!shouldHandleRowSelectionClick(event)) return;
+
+                if (event.shiftKey && lastSelectedRow) {
+                    const addToSelection = event.metaKey || event.ctrlKey;
+                    if (!addToSelection) {
+                        clearSelectedRows(true);
+                    }
+                    selectRangeRows(lastSelectedRow, row);
+                    return;
+                }
+
+                if (event.metaKey || event.ctrlKey) {
+                    toggleRowSelection(row);
+                    return;
+                }
+
+                clearSelectedRows();
+                selectRow(row, true);
+                lastSelectedRow = row;
+                updateBulkDeleteUI();
             });
         }
 
         bindDeleteHandler(table, row, config);
         bindSwipeDelete(table, row, config);
+    }
+
+    function parseClipboardMatrix(raw) {
+        if (!raw) return [];
+        var normalized = String(raw).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        var rows = normalized.split('\n');
+        if (rows.length > 0 && rows[rows.length - 1] === '') {
+            rows.pop();
+        }
+        return rows.map(function (line) {
+            return line.split('\t');
+        });
+    }
+
+    function getSheetRows(table) {
+        return Array.from(table.querySelectorAll('tbody tr[data-row]'));
+    }
+
+    function getRowInputs(row) {
+        return Array.from(row.querySelectorAll('[data-field]'));
+    }
+
+    function ensureRowAt(table, rowIndex, config) {
+        var rows = getSheetRows(table);
+        while (rowIndex >= rows.length) {
+            var newRow = buildNewRow(table);
+            if (!newRow) break;
+            table.querySelector('tbody').appendChild(newRow);
+            registerRowHandlers(table, newRow, config);
+            rows = getSheetRows(table);
+        }
+        return rows[rowIndex] || null;
+    }
+
+    function setCellValue(input, value) {
+        if (!input || input.readOnly || input.disabled) return;
+        var raw = value === null || value === undefined ? '' : String(value).trim();
+        if (input.tagName === 'SELECT') {
+            var options = Array.from(input.options || []);
+            var match = options.find(function (option) {
+                return option.value === raw;
+            });
+            if (!match) {
+                var lowered = raw.toLowerCase();
+                match = options.find(function (option) {
+                    return option.value.toLowerCase() === lowered || option.textContent.trim().toLowerCase() === lowered;
+                });
+            }
+            if (match) {
+                input.value = match.value;
+                applySelectTone(input);
+            }
+            return;
+        }
+
+        input.value = raw;
+    }
+
+    async function runWithConcurrency(items, limit, worker) {
+        if (!items.length) return;
+        const queue = items.slice();
+        const workers = new Array(Math.min(limit, queue.length)).fill(null).map(async function () {
+            while (queue.length > 0) {
+                const item = queue.shift();
+                if (item === undefined) return;
+                await worker(item);
+            }
+        });
+        await Promise.allSettled(workers);
+    }
+
+    async function handleSpreadsheetPaste(event, table, row, input, config) {
+        var clipboard = event.clipboardData || window.clipboardData;
+        if (!clipboard) return;
+        var matrix = parseClipboardMatrix(clipboard.getData('text'));
+        if (!matrix.length) return;
+
+        var isMultiCell = matrix.length > 1 || (matrix[0] && matrix[0].length > 1);
+        if (!isMultiCell) return;
+
+        event.preventDefault();
+
+        var rows = getSheetRows(table);
+        var startRowIndex = rows.indexOf(row);
+        if (startRowIndex < 0) return;
+
+        var startInputs = getRowInputs(row);
+        var startColIndex = startInputs.indexOf(input);
+        if (startColIndex < 0) return;
+
+        var touchedRows = [];
+
+        for (var r = 0; r < matrix.length; r++) {
+            var targetRow = ensureRowAt(table, startRowIndex + r, config);
+            if (!targetRow) break;
+
+            if (touchedRows.indexOf(targetRow) === -1) {
+                touchedRows.push(targetRow);
+            }
+
+            var targetInputs = getRowInputs(targetRow);
+            for (var c = 0; c < matrix[r].length; c++) {
+                var targetColIndex = startColIndex + c;
+                if (targetColIndex >= targetInputs.length) continue;
+                setCellValue(targetInputs[targetColIndex], matrix[r][c]);
+            }
+        }
+
+        var newRowsToCreate = [];
+        var existingRowsToUpdate = [];
+        touchedRows.forEach(function (targetRow) {
+            var isNewRow = targetRow.dataset.newRow === '1';
+            var data = collectRow(targetRow);
+            if (isNewRow && hasRequiredValues(data, config.required)) {
+                newRowsToCreate.push(targetRow);
+                return;
+            }
+            existingRowsToUpdate.push(targetRow);
+        });
+
+        setSaving(true);
+        try {
+            if (newRowsToCreate.length > 0) {
+                if (config.bulkCreateUrl) {
+                    await bulkCreateRows(table, newRowsToCreate, config);
+                } else {
+                    await runWithConcurrency(newRowsToCreate, 6, async function (targetRow) {
+                        await syncRow(table, targetRow, config);
+                    });
+                }
+            }
+
+            await runWithConcurrency(existingRowsToUpdate, 8, async function (targetRow) {
+                await syncRow(table, targetRow, config);
+            });
+        } finally {
+            setSaving(false);
+        }
+        emitSheetChanged(table);
     }
 
     async function syncRow(table, row, config) {
@@ -947,10 +1254,13 @@
     document.querySelectorAll('[data-sheet-table]').forEach(function (table) {
         const config = {
             createUrl: table.dataset.createUrl,
+            bulkCreateUrl: table.dataset.bulkCreateUrl || '',
             updateUrl: table.dataset.updateUrl,
             deleteUrl: table.dataset.deleteUrl,
+            bulkDeleteUrl: table.dataset.bulkDeleteUrl || '',
             required: (table.dataset.required || '').split(',').map(function (v) { return v.trim(); }).filter(Boolean)
         };
+        tableConfigs.set(table, config);
 
         table.querySelectorAll('tbody tr[data-row]').forEach(function (row) {
             if (row.dataset.newRow !== '1') {
@@ -959,6 +1269,59 @@
             registerRowHandlers(table, row, config);
         });
     });
+
+    if (bulkDeleteButton) {
+        bulkDeleteButton.addEventListener('click', async function () {
+            if (selectedRows.size === 0) return;
+            if (!confirm('Hapus semua row yang terpilih?')) return;
+
+            const rows = Array.from(selectedRows).map(function (key) {
+                return document.querySelector('tr[data-row][data-id][data-select-key="' + key + '"]');
+            }).filter(Boolean);
+            if (!rows.length) {
+                clearSelectedRows();
+                return;
+            }
+
+            setSaving(true);
+            try {
+                const tableMap = new Map();
+                rows.forEach(function (row) {
+                    var table = row.closest('[data-sheet-table]');
+                    if (!table) return;
+                    if (!tableMap.has(table)) tableMap.set(table, []);
+                    tableMap.get(table).push(row);
+                });
+
+                const tableEntries = Array.from(tableMap.entries());
+                await runWithConcurrency(tableEntries, 3, async function (entry) {
+                    var table = entry[0];
+                    var tableRows = entry[1];
+                    var config = tableConfigs.get(table);
+                    if (!config || !tableRows.length) return;
+
+                    if (config.bulkDeleteUrl) {
+                        var ids = tableRows
+                            .map(function (row) { return Number(row.dataset.id || 0); })
+                            .filter(function (id) { return Number.isInteger(id) && id > 0; });
+                        if (ids.length) {
+                            await requestJson(config.bulkDeleteUrl, 'POST', { ids: ids });
+                        }
+                        tableRows.forEach(function (row) { row.remove(); });
+                        emitSheetChanged(table);
+                        return;
+                    }
+
+                    await runWithConcurrency(tableRows, 4, async function (singleRow) {
+                        await removeRow(table, singleRow, config);
+                    });
+                });
+            } finally {
+                setSaving(false);
+                clearSelectedRows();
+            }
+        });
+    }
 
     function applySelectTone(select) {
         const value = (select.value || '').toString().trim();
@@ -1012,8 +1375,10 @@
     function getTableConfig(sheetTable) {
         return {
             createUrl: sheetTable.dataset.createUrl,
+            bulkCreateUrl: sheetTable.dataset.bulkCreateUrl || '',
             updateUrl: sheetTable.dataset.updateUrl,
             deleteUrl: sheetTable.dataset.deleteUrl,
+            bulkDeleteUrl: sheetTable.dataset.bulkDeleteUrl || '',
             required: (sheetTable.dataset.required || '').split(',').map(function (v) { return v.trim(); }).filter(Boolean)
         };
     }

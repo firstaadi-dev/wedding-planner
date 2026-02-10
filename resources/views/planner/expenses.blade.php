@@ -6,7 +6,7 @@
 @section('content')
 <div class="row g-3 mb-4">
     <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Budget (Tipe Budget)</div><div class="metric-value" id="expense-total-budget">Rp {{ number_format($stats['totalBudget'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Expense (Manual + Paid)</div><div class="metric-value" id="expense-total-expense">Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Expense (Manual + Sudah Dibayar)</div><div class="metric-value" id="expense-total-expense">Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</div></div></div>
     <div class="col-md-3"><div class="metric-card"><div class="metric-label">Sisa Budget</div><div class="metric-value" id="expense-remaining-budget">Rp {{ number_format($stats['remainingBudget'], 0, ',', '.') }}</div></div></div>
     <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Hutang / Remaining</div><div class="metric-value" id="expense-total-debt">Rp {{ number_format($stats['totalDebt'], 0, ',', '.') }}</div></div></div>
 </div>
@@ -59,7 +59,7 @@
     <div class="card-header pt-3 px-3 fw-semibold">Budget & Expense Manual</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
-            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-create-url="{{ route('expenses.store') }}" data-update-url="/expenses/__ID__" data-delete-url="/expenses/__ID__" data-required="name,type,amount">
+            <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-create-url="{{ route('expenses.store') }}" data-bulk-create-url="{{ route('expenses.bulk-store') }}" data-bulk-delete-url="{{ route('expenses.bulk-destroy') }}" data-update-url="/expenses/__ID__" data-delete-url="/expenses/__ID__" data-required="name,type,amount">
                 <thead>
                 <tr><th>Nama</th><th>Tipe</th><th>Jumlah</th><th>Notes</th><th class="row-actions">Aksi</th></tr>
                 </thead>
@@ -128,10 +128,10 @@
                 <tr>
                     <th>Sumber</th>
                     <th>Nama</th>
-                    <th>Base Price</th>
-                    <th>Paid Amount</th>
-                    <th>DP</th>
-                    <th>Remaining Amount</th>
+                    <th>Harga Awal</th>
+                    <th>Harga Final</th>
+                    <th>Sudah Dibayar</th>
+                    <th>Sisa Pelunasan</th>
                     <th>Catatan</th>
                 </tr>
                 </thead>
@@ -148,7 +148,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Belum ada data auto tracking. Isi harga/paid di To-do atau Seserahan dulu.</td>
+                        <td colspan="7" class="text-center text-muted py-4">Belum ada data auto tracking. Isi Harga Final dan Sudah Dibayar di To-do atau Seserahan dulu.</td>
                     </tr>
                 @endforelse
                 </tbody>
