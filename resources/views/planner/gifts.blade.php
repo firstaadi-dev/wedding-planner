@@ -171,8 +171,9 @@
         var draggingRow = null;
         var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         var clientIdValue = (window.__clientId || '');
+        var giftReorderController = null;
 
-        async function requestJson(url, method, payload) {
+        async function requestJson(url, method, payload, signal) {
             var response = await fetch(url, {
                 method: method,
                 headers: {
@@ -182,7 +183,8 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-Client-ID': clientIdValue
                 },
-                body: payload ? JSON.stringify(payload) : null
+                body: payload ? JSON.stringify(payload) : null,
+                signal: signal || undefined
             });
 
             if (!response.ok) {
@@ -630,9 +632,25 @@
             });
             if (!ids.length) return;
 
-            await requestJson(table.dataset.reorderUrl, 'POST', {
-                ordered_ids: ids
-            });
+            var signal = null;
+            if (typeof AbortController !== 'undefined') {
+                if (giftReorderController) {
+                    giftReorderController.abort();
+                }
+                giftReorderController = new AbortController();
+                signal = giftReorderController.signal;
+            }
+
+            try {
+                await requestJson(table.dataset.reorderUrl, 'POST', {
+                    ordered_ids: ids
+                }, signal);
+            } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+                throw error;
+            }
         }
 
         function initGiftGroupReorderControls() {
@@ -731,13 +749,14 @@
                     if (!row) return;
                     draggingRow = row;
                     row.classList.add('row-dragging');
-                    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+                    if (event.dataTransfer) {
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', row.dataset.id || '');
+                    }
                 });
 
                 tbody.addEventListener('dragend', function () {
-                    tbody.querySelectorAll('.sheet-drop-target').forEach(function (el) {
-                        el.classList.remove('sheet-drop-target');
-                    });
+                    tbody.classList.remove('sheet-drop-target');
                     if (draggingRow) draggingRow.classList.remove('row-dragging');
                     draggingRow = null;
                 });
@@ -745,20 +764,17 @@
                 tbody.addEventListener('dragover', function (event) {
                     if (!draggingRow) return;
                     event.preventDefault();
-                    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+                    tbody.classList.add('sheet-drop-target');
                 });
 
                 tbody.addEventListener('dragleave', function (event) {
-                    if (event.target === tbody) {
-                        tbody.querySelectorAll('.sheet-drop-target').forEach(function (el) {
-                            el.classList.remove('sheet-drop-target');
-                        });
-                    }
+                    if (!tbody.contains(event.relatedTarget)) tbody.classList.remove('sheet-drop-target');
                 });
 
                 tbody.addEventListener('drop', function (event) {
                     if (!draggingRow) return;
                     event.preventDefault();
+                    tbody.classList.remove('sheet-drop-target');
 
                     var dropBeforeRow = getDropBeforeRow(tbody, event.clientY);
                     var addRow = tbody.querySelector('tr[data-new-row="1"]');
@@ -769,6 +785,7 @@
                         tbody.insertBefore(draggingRow, addRow || null);
                     }
 
+                    syncGiftSortOrderInputs(tbody);
                     regroupGiftRows(table);
                     persistGiftOrder(table).catch(console.error);
                 });

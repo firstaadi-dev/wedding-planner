@@ -199,20 +199,70 @@ class EngagementPlannerController extends Controller
             'event_type' => ['required', 'in:lamaran,resepsi'],
             'side' => ['required', 'in:cpp,cpw'],
             'ordered_ids' => ['required', 'array'],
-            'ordered_ids.*' => ['integer', 'exists:guests,id'],
+            'ordered_ids.*' => ['integer'],
         ]);
+
+        $orderedIds = array_values(array_unique(array_map('intval', $validated['ordered_ids'])));
+        if (empty($orderedIds)) {
+            return response()->json(['message' => 'Urutan undangan diperbarui.']);
+        }
+
+        $existingCount = Guest::query()->whereIn('id', $orderedIds)->count();
+        if ($existingCount !== count($orderedIds)) {
+            return response()->json(['message' => 'Ada ID undangan yang tidak valid.'], 422);
+        }
 
         DB::transaction(function () use ($validated, $request) {
             $this->setClientId($request);
+            $orderedIds = array_values(array_unique(array_map('intval', $validated['ordered_ids'])));
+            if (empty($orderedIds)) {
+                return;
+            }
+
+            $eventType = $validated['event_type'];
+            $side = $validated['side'];
+
+            $currentRows = Guest::query()
+                ->whereIn('id', $orderedIds)
+                ->get(['id', 'event_type', 'side', 'sort_order'])
+                ->keyBy('id');
+
+            $changedIds = [];
+            $sortCaseParts = [];
             $order = 1;
-            foreach ($validated['ordered_ids'] as $id) {
-                Guest::where('id', $id)->update([
-                    'event_type' => $validated['event_type'],
-                    'side' => $validated['side'],
-                    'sort_order' => $order,
-                ]);
+
+            foreach ($orderedIds as $id) {
+                $row = $currentRows->get($id);
+                if (!$row) {
+                    $order++;
+                    continue;
+                }
+
+                $needsChange = ((string) $row->event_type !== (string) $eventType)
+                    || ((string) $row->side !== (string) $side)
+                    || ((int) $row->sort_order !== $order);
+
+                if ($needsChange) {
+                    $changedIds[] = $id;
+                    $sortCaseParts[] = 'WHEN ' . $id . ' THEN ' . $order;
+                }
                 $order++;
             }
+
+            if (empty($changedIds)) {
+                return;
+            }
+
+            $idList = implode(',', $changedIds);
+            $sortCaseSql = implode(' ', $sortCaseParts);
+            $eventTypeEscaped = str_replace("'", "''", (string) $eventType);
+            $sideEscaped = str_replace("'", "''", (string) $side);
+
+            DB::statement(
+                "UPDATE guests SET event_type = '" . $eventTypeEscaped . "', side = '" . $sideEscaped . "', " .
+                'sort_order = CASE id ' . $sortCaseSql . ' ELSE sort_order END ' .
+                'WHERE id IN (' . $idList . ')'
+            );
         });
 
         return response()->json(['message' => 'Urutan undangan diperbarui.']);
@@ -371,16 +421,55 @@ class EngagementPlannerController extends Controller
     {
         $validated = $request->validate([
             'ordered_ids' => ['required', 'array'],
-            'ordered_ids.*' => ['integer', 'exists:gifts,id'],
+            'ordered_ids.*' => ['integer'],
         ]);
+
+        $orderedIds = array_values(array_unique(array_map('intval', $validated['ordered_ids'])));
+        if (empty($orderedIds)) {
+            return response()->json(['message' => 'Urutan seserahan diperbarui.']);
+        }
+
+        $existingCount = Gift::query()->whereIn('id', $orderedIds)->count();
+        if ($existingCount !== count($orderedIds)) {
+            return response()->json(['message' => 'Ada ID seserahan yang tidak valid.'], 422);
+        }
 
         DB::transaction(function () use ($validated, $request) {
             $this->setClientId($request);
+            $orderedIds = array_values(array_unique(array_map('intval', $validated['ordered_ids'])));
+            if (empty($orderedIds)) {
+                return;
+            }
+
+            $currentSortMap = Gift::query()
+                ->whereIn('id', $orderedIds)
+                ->pluck('sort_order', 'id');
+
+            $changedMap = [];
             $order = 1;
-            foreach ($validated['ordered_ids'] as $id) {
-                Gift::where('id', $id)->update(['sort_order' => $order]);
+            foreach ($orderedIds as $id) {
+                $current = isset($currentSortMap[$id]) ? (int) $currentSortMap[$id] : null;
+                if ($current !== $order) {
+                    $changedMap[$id] = $order;
+                }
                 $order++;
             }
+
+            if (empty($changedMap)) {
+                return;
+            }
+
+            $caseParts = [];
+            foreach ($changedMap as $id => $newOrder) {
+                $caseParts[] = 'WHEN ' . $id . ' THEN ' . $newOrder;
+            }
+
+            $idList = implode(',', array_keys($changedMap));
+            $caseSql = implode(' ', $caseParts);
+
+            DB::statement(
+                'UPDATE gifts SET sort_order = CASE id ' . $caseSql . ' ELSE sort_order END WHERE id IN (' . $idList . ')'
+            );
         });
 
         return response()->json(['message' => 'Urutan seserahan diperbarui.']);
