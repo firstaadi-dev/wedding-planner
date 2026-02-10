@@ -31,7 +31,12 @@
                         <td><input class="form-control form-control-sm sheet-cell" data-field="brand" value="{{ $gift->brand }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="{{ $gift->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $gift->paid_amount ?? 0 }}"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="link" value="{{ $gift->link }}" placeholder="https://..."></td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input class="form-control form-control-sm sheet-cell" data-field="link" value="{{ $gift->link }}" placeholder="https://...">
+                                <a class="btn btn-outline-secondary" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru">↗</a>
+                            </div>
+                        </td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="notes" value="{{ $gift->notes }}"></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="status">
@@ -48,7 +53,12 @@
                     <td><input class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://..."></td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://...">
+                            <a class="btn btn-outline-secondary disabled" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru" aria-disabled="true" tabindex="-1">↗</a>
+                        </div>
+                    </td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></td>
                     <td>
                         <select class="form-select form-select-sm sheet-cell" data-field="status">
@@ -66,7 +76,12 @@
                         <td><input class="form-control form-control-sm sheet-cell" data-field="brand" placeholder="Merk"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://..."></td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://...">
+                                <a class="btn btn-outline-secondary disabled" data-open-link target="_blank" rel="noopener noreferrer" href="#" title="Buka link di tab baru" aria-label="Buka link di tab baru" aria-disabled="true" tabindex="-1">↗</a>
+                            </div>
+                        </td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Keterangan"></td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="status">
@@ -140,13 +155,72 @@
             });
         }
 
+        function normalizeLink(raw) {
+            var value = (raw || '').trim();
+            if (!value) return '';
+            if (!/^https?:\/\//i.test(value)) {
+                value = 'https://' + value;
+            }
+            return value;
+        }
+
+        function updateOpenLinkButton(row) {
+            var input = row.querySelector('[data-field="link"]');
+            var button = row.querySelector('[data-open-link]');
+            if (!input || !button) return;
+
+            var url = normalizeLink(input.value);
+            if (url) {
+                button.href = url;
+                button.classList.remove('disabled');
+                button.removeAttribute('aria-disabled');
+                button.removeAttribute('tabindex');
+            } else {
+                button.href = '#';
+                button.classList.add('disabled');
+                button.setAttribute('aria-disabled', 'true');
+                button.setAttribute('tabindex', '-1');
+            }
+        }
+
+        function bindLinkControl(row) {
+            if (!row) return;
+            if (row.dataset.linkReady === '1') {
+                updateOpenLinkButton(row);
+                return;
+            }
+            row.dataset.linkReady = '1';
+
+            var input = row.querySelector('[data-field="link"]');
+            var button = row.querySelector('[data-open-link]');
+            if (!input || !button) return;
+
+            updateOpenLinkButton(row);
+
+            input.addEventListener('input', function () {
+                updateOpenLinkButton(row);
+            });
+
+            input.addEventListener('blur', function () {
+                updateOpenLinkButton(row);
+            });
+
+            button.addEventListener('click', function (event) {
+                if (button.classList.contains('disabled')) {
+                    event.preventDefault();
+                }
+            });
+        }
+
         function bindGiftRows() {
             document.querySelectorAll('table[data-create-url="{{ route('gifts.store') }}"] tbody tr[data-row]').forEach(function (row) {
-                if (row.dataset.currencyReady === '1') return;
-                row.dataset.currencyReady = '1';
-                row.querySelectorAll('.currency-idr').forEach(function (input) {
-                    bindCurrencyInput(input);
-                });
+                if (row.dataset.currencyReady !== '1') {
+                    row.dataset.currencyReady = '1';
+                    row.querySelectorAll('.currency-idr').forEach(function (input) {
+                        bindCurrencyInput(input);
+                    });
+                }
+                bindLinkControl(row);
             });
         }
 

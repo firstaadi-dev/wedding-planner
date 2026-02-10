@@ -1,7 +1,7 @@
 @extends('layouts.planner')
 
 @section('title', 'Tracker Undangan')
-@section('subtitle', 'Pisahkan tracker undangan Lamaran dan Resepsi dalam satu halaman')
+@section('subtitle', 'For Our Special Event')
 
 @section('content')
 <ul class="nav planner-nav mb-3" id="guest-subtabs">

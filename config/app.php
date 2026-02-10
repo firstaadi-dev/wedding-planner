@@ -55,6 +55,7 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     'asset_url' => env('ASSET_URL', null),
+    'disable_sse' => (bool) env('DISABLE_SSE', false),
 
     /*
     |--------------------------------------------------------------------------

@@ -4,19 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Engagement Planner')</title>
+    <title>Our Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Sora:wght@600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --line: #e6eaef;
-            --text: #20262d;
-            --muted: #6d7680;
-            --accent: #2f6feb;
-            --accent-soft: #edf3ff;
+            --line: #dbe6f5;
+            --text: #15202f;
+            --muted: #5e6b78;
+            --accent: #1f6fd9;
+            --accent-soft: #e9f2ff;
+            --surface: #ffffff;
         }
 
         body {
-            background: linear-gradient(180deg, #f8fafc 0%, #f4f6f8 100%);
+            font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+            background:
+                radial-gradient(1200px 300px at 8% -10%, #d7e8ff 0%, transparent 70%),
+                radial-gradient(900px 260px at 92% -12%, #dff7f0 0%, transparent 70%),
+                linear-gradient(180deg, #f7fafd 0%, #eef3f9 100%);
             color: var(--text);
         }
 
@@ -34,6 +40,16 @@
 
         .planner-title { font-weight: 700; letter-spacing: 0.2px; }
         .planner-subtitle { color: var(--muted); font-size: 0.95rem; }
+
+        .planner-title-wrap .planner-title {
+            font-family: "Sora", "Plus Jakarta Sans", sans-serif;
+            font-size: clamp(1.65rem, 2.6vw, 2.2rem);
+            letter-spacing: -0.02em;
+        }
+
+        .planner-title-wrap .planner-subtitle {
+            font-size: 1rem;
+        }
 
         .planner-nav {
             background: #fff;
@@ -55,6 +71,42 @@
         .planner-nav .nav-link.active {
             background: var(--accent-soft);
             color: var(--accent);
+        }
+
+        .planner-main-nav {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+            background: transparent;
+            border: 0;
+            padding: 0;
+        }
+
+        .planner-main-nav .nav-link {
+            display: block;
+            text-align: center;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: #243446;
+            border-radius: 12px;
+            font-weight: 700;
+            padding: 0.85rem 0.75rem;
+            box-shadow: 0 10px 18px rgba(21, 32, 47, 0.05);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease;
+        }
+
+        .planner-main-nav .nav-link:hover {
+            transform: translateY(-1px);
+            border-color: #c6d8f4;
+            box-shadow: 0 14px 24px rgba(19, 54, 103, 0.1);
+            color: #1b3f72;
+        }
+
+        .planner-main-nav .nav-link.active {
+            background: linear-gradient(145deg, #eef5ff 0%, #dfecff 100%);
+            border-color: #b8cff6;
+            color: var(--accent);
+            box-shadow: 0 14px 24px rgba(31, 111, 217, 0.16);
         }
 
         .metric-card {
@@ -313,6 +365,19 @@
                 font-size: 0.9rem;
             }
 
+            .planner-main-nav {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.55rem;
+            }
+
+            .planner-main-nav .nav-link {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding: 0.7rem 0.6rem;
+                font-size: 0.86rem;
+            }
+
             .metric-value {
                 font-size: 1.15rem;
             }
@@ -369,15 +434,12 @@
 </head>
 <body>
 <div class="container-fluid planner-wrap py-4 py-md-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-        <div>
-            <h1 class="h3 planner-title mb-1">@yield('title', 'Engagement Planner')</h1>
-            <div class="planner-subtitle">@yield('subtitle', 'Perencanaan engagement personal')</div>
-        </div>
-        <small class="text-muted">Laravel 8 | PHP 7.4 | SQLite</small>
+    <div class="planner-title-wrap mb-3">
+        <h1 class="h3 planner-title mb-1">Our Plan</h1>
+        <div class="planner-subtitle">For our Special Event</div>
     </div>
 
-    <ul class="nav planner-nav mb-4">
+    <ul class="nav planner-main-nav mb-4">
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('guests.*')) active @endif" href="{{ route('guests.index') }}">Undangan</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('tasks.*')) active @endif" href="{{ route('tasks.index') }}">To-do</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('gifts.*')) active @endif" href="{{ route('gifts.index') }}">Seserahan</a></li>
@@ -597,7 +659,7 @@
             startX = event.touches[0].clientX;
             startY = event.touches[0].clientY;
             currentX = 0;
-            tracking = true;
+            tracking = true;gunakan
             swiping = false;
             row.classList.remove('row-swipe-armed');
         }, { passive: true });
@@ -1060,7 +1122,14 @@
         }, 150);
     }, true);
 
+    var sseDisabled = @json((bool) config('app.disable_sse'));
+
     (function initSSE() {
+        if (sseDisabled) {
+            updateConnectionIndicator(false);
+            return;
+        }
+
         var eventSource = null;
         var reconnectAttempts = 0;
         var disconnectedAt = 0;
