@@ -793,7 +793,7 @@ class EngagementPlannerController extends Controller
             [
                 'entry_mode' => 'auto',
                 'name' => $task->title,
-                'category' => 'To-do',
+                'category' => 'To-Do',
                 'type' => 'expense',
                 'amount' => $downPayment,
                 'base_price' => $base,
@@ -826,7 +826,7 @@ class EngagementPlannerController extends Controller
             [
                 'entry_mode' => 'auto',
                 'name' => $gift->name,
-                'category' => 'Seserahan',
+                'category' => $this->normalizeGiftGroupName($gift->group_name) ?? 'Seserahan',
                 'type' => 'expense',
                 'amount' => $downPayment,
                 'base_price' => $base,

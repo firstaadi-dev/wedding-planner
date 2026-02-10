@@ -127,6 +127,7 @@
                 <thead>
                 <tr>
                     <th>Sumber</th>
+                    <th>Kategori</th>
                     <th>Nama</th>
                     <th>Harga Awal</th>
                     <th>Harga Final</th>
@@ -138,7 +139,8 @@
                 <tbody>
                 @forelse($autoExpenses as $expense)
                     <tr>
-                        <td>{{ $expense->source_type === 'task' ? 'To-do' : 'Seserahan' }}</td>
+                        <td>{{ $expense->source_type === 'task' ? 'To-Do' : 'Seserahan' }}</td>
+                        <td>{{ $expense->source_type === 'task' ? 'To-Do' : ($expense->category ?: 'Seserahan') }}</td>
                         <td>{{ $expense->name }}</td>
                         <td>Rp {{ number_format($expense->base_price, 0, ',', '.') }}</td>
                         <td>Rp {{ number_format($expense->paid_amount, 0, ',', '.') }}</td>
@@ -148,7 +150,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Belum ada data auto tracking. Isi Harga Final dan Sudah Dibayar di To-do atau Seserahan dulu.</td>
+                        <td colspan="8" class="text-center text-muted py-4">Belum ada data auto tracking. Isi Harga Final dan Sudah Dibayar di To-Do atau Seserahan dulu.</td>
                     </tr>
                 @endforelse
                 </tbody>
