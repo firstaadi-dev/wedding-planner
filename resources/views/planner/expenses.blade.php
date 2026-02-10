@@ -11,7 +11,7 @@
 </div>
 
 <div class="planner-card">
-    <div class="card-header bg-white border-0 pt-3 px-3 fw-semibold">Budget & Expense Tracker</div>
+    <div class="card-header pt-3 px-3 fw-semibold">Budget & Expense Tracker</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
             <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-create-url="{{ route('expenses.store') }}" data-update-url="/expenses/__ID__" data-delete-url="/expenses/__ID__" data-required="name,type,amount">

@@ -20,7 +20,7 @@
     <div class="row g-4">
         <div class="col-12 col-xl-6">
             <div class="planner-card h-100">
-                <div class="card-header bg-white border-0 pt-3 px-3 fw-semibold">Daftar Undangan CPP - Lamaran</div>
+                <div class="card-header pt-3 px-3 fw-semibold">Daftar Undangan CPP - Lamaran</div>
                 <div class="card-body pt-2">
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpp" data-event-type="lamaran" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
@@ -78,7 +78,7 @@
 
         <div class="col-12 col-xl-6">
             <div class="planner-card h-100">
-                <div class="card-header bg-white border-0 pt-3 px-3 fw-semibold">Daftar Undangan CPW - Lamaran</div>
+                <div class="card-header pt-3 px-3 fw-semibold">Daftar Undangan CPW - Lamaran</div>
                 <div class="card-body pt-2">
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpw" data-event-type="lamaran" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
@@ -147,7 +147,7 @@
     <div class="row g-4">
         <div class="col-12 col-xl-6">
             <div class="planner-card h-100">
-                <div class="card-header bg-white border-0 pt-3 px-3 fw-semibold">Daftar Undangan CPP - Resepsi</div>
+                <div class="card-header pt-3 px-3 fw-semibold">Daftar Undangan CPP - Resepsi</div>
                 <div class="card-body pt-2">
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpp" data-event-type="resepsi" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
@@ -205,7 +205,7 @@
 
         <div class="col-12 col-xl-6">
             <div class="planner-card h-100">
-                <div class="card-header bg-white border-0 pt-3 px-3 fw-semibold">Daftar Undangan CPW - Resepsi</div>
+                <div class="card-header pt-3 px-3 fw-semibold">Daftar Undangan CPW - Resepsi</div>
                 <div class="card-body pt-2">
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpw" data-event-type="resepsi" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
