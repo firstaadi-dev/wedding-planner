@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="row g-3 mb-4">
-    <div class="col-md-12"><div class="metric-card"><div class="metric-label">Total Harga Seserahan</div><div class="metric-value">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
+    <div class="col-md-12"><div class="metric-card"><div class="metric-label">Total Harga Seserahan</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
 </div>
 
 <div class="planner-card">
@@ -150,10 +150,25 @@
             });
         }
 
+        function recalcGiftStats() {
+            var rows = document.querySelectorAll('table[data-sheet-table] tbody tr[data-row][data-id]');
+            var totalPrice = 0;
+            rows.forEach(function (row) {
+                var priceInput = row.querySelector('[data-field="price"]');
+                if (!priceInput) return;
+                totalPrice += parseCurrencyIdr(priceInput.value);
+            });
+            var el = document.getElementById('gift-total-price');
+            if (el) {
+                el.textContent = (totalPrice > 0) ? formatCurrencyIdr(totalPrice) : 'Rp0';
+            }
+        }
+
         document.addEventListener('sheet:changed', function (event) {
             const table = event.detail && event.detail.table;
             if (table && table.dataset.createUrl === '{{ route('gifts.store') }}') {
                 bindGiftRows();
+                recalcGiftStats();
             }
         });
 

@@ -5,9 +5,9 @@
 
 @section('content')
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Budget</div><div class="metric-value">Rp {{ number_format($stats['totalBudget'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Expense</div><div class="metric-value">Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Sisa Budget</div><div class="metric-value">Rp {{ number_format($stats['remainingBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Budget</div><div class="metric-value" id="expense-total-budget">Rp {{ number_format($stats['totalBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Expense</div><div class="metric-value" id="expense-total-expense">Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Sisa Budget</div><div class="metric-value" id="expense-remaining-budget">Rp {{ number_format($stats['remainingBudget'], 0, ',', '.') }}</div></div></div>
 </div>
 
 <div class="planner-card">
@@ -77,3 +77,50 @@
     </div>
 </div>
 @endsection
+
+@push('page-scripts')
+<script>
+    (function () {
+        function formatRupiah(amount) {
+            if (!Number.isFinite(amount) || amount === 0) return 'Rp 0';
+            return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(amount));
+        }
+
+        function recalcExpenseStats() {
+            var rows = document.querySelectorAll('table[data-sheet-table] tbody tr[data-row][data-id]');
+            var totalBudget = 0;
+            var totalExpense = 0;
+
+            rows.forEach(function (row) {
+                var typeInput = row.querySelector('[data-field="type"]');
+                var amountInput = row.querySelector('[data-field="amount"]');
+                if (!typeInput || !amountInput) return;
+
+                var amount = parseFloat(amountInput.value) || 0;
+                if (typeInput.value === 'budget') totalBudget += amount;
+                if (typeInput.value === 'expense') totalExpense += amount;
+            });
+
+            var el1 = document.getElementById('expense-total-budget');
+            var el2 = document.getElementById('expense-total-expense');
+            var el3 = document.getElementById('expense-remaining-budget');
+            if (el1) el1.textContent = formatRupiah(totalBudget);
+            if (el2) el2.textContent = formatRupiah(totalExpense);
+            if (el3) el3.textContent = formatRupiah(totalBudget - totalExpense);
+        }
+
+        document.addEventListener('sheet:changed', function (event) {
+            var table = event.detail && event.detail.table;
+            if (table && table.dataset.createUrl && table.dataset.createUrl.indexOf('/expenses') !== -1) {
+                recalcExpenseStats();
+            }
+        });
+
+        document.addEventListener('change', function (event) {
+            if (event.target.closest('table[data-sheet-table]') && (event.target.dataset.field === 'type' || event.target.dataset.field === 'amount')) {
+                recalcExpenseStats();
+            }
+        });
+    })();
+</script>
+@endpush

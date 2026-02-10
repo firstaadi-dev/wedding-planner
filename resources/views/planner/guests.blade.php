@@ -31,8 +31,9 @@
                             @foreach($lamaranCppGuests as $guest)
                                 <tr data-row data-id="{{ $guest->id }}">
                                     <td>
-                                        <input type="hidden" class="sheet-cell" data-field="side" value="cpp">
-                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran">
+                                        <input type="hidden" class="sheet-cell" data-field="side" value="{{ $guest->side }}">
+                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $guest->event_type }}">
+                                        <input type="hidden" class="sheet-cell" data-field="sort_order" value="{{ $guest->sort_order }}">
                                         <div class="name-cell">
                                             <span class="drag-handle">::</span>
                                             <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $guest->name }}">
@@ -53,6 +54,7 @@
                                 <td>
                                     <input type="hidden" class="sheet-cell" data-field="side" value="cpp">
                                     <input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran">
+                                    <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                                     <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama">
                                 </td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
@@ -62,7 +64,7 @@
                             </tbody>
                             <template data-new-row-template>
                                 <tr data-row data-new-row="1" class="inline-add-row">
-                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpp"><input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
+                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpp"><input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran"><input type="hidden" class="sheet-cell" data-field="sort_order" value="0"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
@@ -87,8 +89,9 @@
                             @foreach($lamaranCpwGuests as $guest)
                                 <tr data-row data-id="{{ $guest->id }}">
                                     <td>
-                                        <input type="hidden" class="sheet-cell" data-field="side" value="cpw">
-                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran">
+                                        <input type="hidden" class="sheet-cell" data-field="side" value="{{ $guest->side }}">
+                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $guest->event_type }}">
+                                        <input type="hidden" class="sheet-cell" data-field="sort_order" value="{{ $guest->sort_order }}">
                                         <div class="name-cell">
                                             <span class="drag-handle">::</span>
                                             <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $guest->name }}">
@@ -109,6 +112,7 @@
                                 <td>
                                     <input type="hidden" class="sheet-cell" data-field="side" value="cpw">
                                     <input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran">
+                                    <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                                     <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama">
                                 </td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
@@ -118,7 +122,7 @@
                             </tbody>
                             <template data-new-row-template>
                                 <tr data-row data-new-row="1" class="inline-add-row">
-                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpw"><input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
+                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpw"><input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran"><input type="hidden" class="sheet-cell" data-field="sort_order" value="0"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
@@ -154,8 +158,9 @@
                             @foreach($resepsiCppGuests as $guest)
                                 <tr data-row data-id="{{ $guest->id }}">
                                     <td>
-                                        <input type="hidden" class="sheet-cell" data-field="side" value="cpp">
-                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi">
+                                        <input type="hidden" class="sheet-cell" data-field="side" value="{{ $guest->side }}">
+                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $guest->event_type }}">
+                                        <input type="hidden" class="sheet-cell" data-field="sort_order" value="{{ $guest->sort_order }}">
                                         <div class="name-cell">
                                             <span class="drag-handle">::</span>
                                             <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $guest->name }}">
@@ -176,6 +181,7 @@
                                 <td>
                                     <input type="hidden" class="sheet-cell" data-field="side" value="cpp">
                                     <input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi">
+                                    <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                                     <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama">
                                 </td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
@@ -185,7 +191,7 @@
                             </tbody>
                             <template data-new-row-template>
                                 <tr data-row data-new-row="1" class="inline-add-row">
-                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpp"><input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
+                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpp"><input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi"><input type="hidden" class="sheet-cell" data-field="sort_order" value="0"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
@@ -210,8 +216,9 @@
                             @foreach($resepsiCpwGuests as $guest)
                                 <tr data-row data-id="{{ $guest->id }}">
                                     <td>
-                                        <input type="hidden" class="sheet-cell" data-field="side" value="cpw">
-                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi">
+                                        <input type="hidden" class="sheet-cell" data-field="side" value="{{ $guest->side }}">
+                                        <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $guest->event_type }}">
+                                        <input type="hidden" class="sheet-cell" data-field="sort_order" value="{{ $guest->sort_order }}">
                                         <div class="name-cell">
                                             <span class="drag-handle">::</span>
                                             <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $guest->name }}">
@@ -232,6 +239,7 @@
                                 <td>
                                     <input type="hidden" class="sheet-cell" data-field="side" value="cpw">
                                     <input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi">
+                                    <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                                     <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama">
                                 </td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
@@ -241,7 +249,7 @@
                             </tbody>
                             <template data-new-row-template>
                                 <tr data-row data-new-row="1" class="inline-add-row">
-                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpw"><input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
+                                    <td><input type="hidden" class="sheet-cell" data-field="side" value="cpw"><input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi"><input type="hidden" class="sheet-cell" data-field="sort_order" value="0"><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
@@ -262,6 +270,8 @@
         let draggingRow = null;
         const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+        const clientIdValue = (window.__clientId || '');
+
         async function requestJson(url, method, payload) {
             const response = await fetch(url, {
                 method: method,
@@ -269,7 +279,8 @@
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrf,
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Client-ID': clientIdValue
                 },
                 body: payload ? JSON.stringify(payload) : null
             });

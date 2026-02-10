@@ -111,6 +111,8 @@ class EngagementPlannerController extends Controller
 
     public function storeGuest(Request $request)
     {
+        $this->setClientId($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'side' => ['required', 'in:cpp,cpw'],
@@ -129,6 +131,8 @@ class EngagementPlannerController extends Controller
 
     public function updateGuest(Request $request, Guest $guest)
     {
+        $this->setClientId($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'side' => ['required', 'in:cpp,cpw'],
@@ -158,7 +162,8 @@ class EngagementPlannerController extends Controller
             'ordered_ids.*' => ['integer', 'exists:guests,id'],
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
+            $this->setClientId($request);
             $order = 1;
             foreach ($validated['ordered_ids'] as $id) {
                 Guest::where('id', $id)->update([
@@ -175,6 +180,7 @@ class EngagementPlannerController extends Controller
 
     public function destroyGuest(Request $request, Guest $guest)
     {
+        $this->setClientId($request);
         $guest->delete();
 
         return $this->respondSuccess($request, 'Undangan dihapus.');
@@ -182,6 +188,8 @@ class EngagementPlannerController extends Controller
 
     public function storeTask(Request $request)
     {
+        $this->setClientId($request);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -206,6 +214,8 @@ class EngagementPlannerController extends Controller
 
     public function updateTask(Request $request, EngagementTask $task)
     {
+        $this->setClientId($request);
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
@@ -230,6 +240,7 @@ class EngagementPlannerController extends Controller
 
     public function destroyTask(Request $request, EngagementTask $task)
     {
+        $this->setClientId($request);
         $task->delete();
 
         return $this->respondSuccess($request, 'Task dihapus.');
@@ -237,6 +248,8 @@ class EngagementPlannerController extends Controller
 
     public function storeGift(Request $request)
     {
+        $this->setClientId($request);
+
         $gift = Gift::create($request->validate([
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
@@ -252,6 +265,8 @@ class EngagementPlannerController extends Controller
 
     public function updateGift(Request $request, Gift $gift)
     {
+        $this->setClientId($request);
+
         $gift->update($request->validate([
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
@@ -267,6 +282,7 @@ class EngagementPlannerController extends Controller
 
     public function destroyGift(Request $request, Gift $gift)
     {
+        $this->setClientId($request);
         $gift->delete();
 
         return $this->respondSuccess($request, 'Item seserahan dihapus.');
@@ -274,6 +290,8 @@ class EngagementPlannerController extends Controller
 
     public function storeExpense(Request $request)
     {
+        $this->setClientId($request);
+
         $expense = Expense::create($request->validate([
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
@@ -287,6 +305,8 @@ class EngagementPlannerController extends Controller
 
     public function updateExpense(Request $request, Expense $expense)
     {
+        $this->setClientId($request);
+
         $expense->update($request->validate([
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
@@ -300,9 +320,18 @@ class EngagementPlannerController extends Controller
 
     public function destroyExpense(Request $request, Expense $expense)
     {
+        $this->setClientId($request);
         $expense->delete();
 
         return $this->respondSuccess($request, 'Catatan budget/expense dihapus.');
+    }
+
+    private function setClientId(Request $request): void
+    {
+        $clientId = $request->header('X-Client-ID', '');
+        if ($clientId !== '') {
+            DB::select("SELECT set_config('app.client_id', ?, false)", [$clientId]);
+        }
     }
 
     private function nextGuestSortOrder(string $eventType, string $side): int

@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:7.4-apache
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -17,6 +17,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 
 COPY . .
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/conf.d/sse.ini /usr/local/etc/php/conf.d/sse.ini
 
 RUN php artisan package:discover --ansi
 
@@ -24,6 +25,8 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-avail
     && sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf \
     && sed -ri -e 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf \
     && echo 'ServerName localhost' >> /etc/apache2/apache2.conf \
+    && printf '<Location /events>\n    SetEnv no-gzip 1\n</Location>\n' > /etc/apache2/conf-available/sse.conf \
+    && a2enconf sse \
     && mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 

@@ -404,6 +404,8 @@
 (function () {
     const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const hint = document.querySelector('.autosave-hint');
+    var clientId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    window.__clientId = clientId;
 
     function setSaving(state) {
         if (!hint) return;
@@ -466,7 +468,8 @@
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrf,
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Client-ID': clientId
             },
             body: payload ? JSON.stringify(payload) : null
         });
@@ -783,6 +786,351 @@
             select.classList.add('sheet-tone-' + value);
         }
     }
+
+    function formatCurrencyIdr(value) {
+        var amount = Number(value);
+        if (!Number.isFinite(amount) || amount <= 0) return '';
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            maximumFractionDigits: 0
+        }).format(amount);
+    }
+
+    /* ─── SSE: Real-time remote changes ─────────────────────────── */
+
+    var DB_TABLE_MAP = {
+        'guests': 'guests',
+        'engagement_tasks': 'tasks',
+        'gifts': 'gifts',
+        'expenses': 'expenses'
+    };
+
+    var URL_TABLE_MAP = {
+        '/tasks': 'engagement_tasks',
+        '/gifts': 'gifts',
+        '/expenses': 'expenses',
+        '/guests': 'guests'
+    };
+
+    function getTableConfig(sheetTable) {
+        return {
+            createUrl: sheetTable.dataset.createUrl,
+            updateUrl: sheetTable.dataset.updateUrl,
+            deleteUrl: sheetTable.dataset.deleteUrl,
+            required: (sheetTable.dataset.required || '').split(',').map(function (v) { return v.trim(); }).filter(Boolean)
+        };
+    }
+
+    function findSheetTablesForDbTable(dbTable) {
+        var all = document.querySelectorAll('[data-sheet-table]');
+        var results = [];
+        for (var i = 0; i < all.length; i++) {
+            var t = all[i];
+            var createUrl = t.dataset.createUrl || '';
+            for (var fragment in URL_TABLE_MAP) {
+                if (createUrl.indexOf(fragment) !== -1 && URL_TABLE_MAP[fragment] === dbTable) {
+                    results.push(t);
+                    break;
+                }
+            }
+        }
+        return results;
+    }
+
+    function findGuestTable(eventType, side) {
+        return document.querySelector(
+            'table[data-sheet-name="guests"][data-event-type="' + eventType + '"][data-side="' + side + '"]'
+        );
+    }
+
+    function applyDataToRow(row, data, dbTable) {
+        Object.keys(data).forEach(function (column) {
+            if (column === 'id' || column === 'created_at' || column === 'updated_at') return;
+            var input = row.querySelector('[data-field="' + column + '"]');
+            if (!input) return;
+
+            var value = data[column];
+            if (value === null || value === undefined) value = '';
+
+            if (input.dataset.currencyIdr === '1' && input !== document.activeElement) {
+                var num = Number(value);
+                input.value = (Number.isFinite(num) && num > 0) ? formatCurrencyIdr(num) : '';
+            } else if (input.tagName === 'SELECT') {
+                input.value = String(value);
+                applySelectTone(input);
+            } else {
+                input.value = String(value);
+            }
+        });
+    }
+
+    function flashRow(row) {
+        row.style.transition = 'background-color 0.4s ease';
+        var cells = row.querySelectorAll('td');
+        cells.forEach(function (td) { td.style.backgroundColor = '#d4edda'; });
+        setTimeout(function () {
+            cells.forEach(function (td) { td.style.backgroundColor = ''; });
+            setTimeout(function () {
+                row.style.transition = '';
+            }, 400);
+        }, 1200);
+    }
+
+    function applyRemoteUpdate(dbTable, recordId, data) {
+        var rows = document.querySelectorAll('tr[data-row][data-id="' + recordId + '"]');
+
+        rows.forEach(function (row) {
+            if (row.contains(document.activeElement)) {
+                row.dataset.pendingRemoteUpdate = JSON.stringify(data);
+                row.dataset.pendingRemoteTable = dbTable;
+                return;
+            }
+
+            applyDataToRow(row, data, dbTable);
+            row.dataset.snapshot = encodeSnapshot(collectRow(row));
+            flashRow(row);
+
+            var parentTable = row.closest('[data-sheet-table]');
+            if (parentTable) emitSheetChanged(parentTable);
+        });
+
+        if (dbTable === 'guests' && data) {
+            handleGuestTableMove(recordId, data);
+        }
+    }
+
+    function applyRemoteInsert(dbTable, recordId, data) {
+        var targetTables;
+
+        if (dbTable === 'guests' && data) {
+            var gt = findGuestTable(data.event_type, data.side);
+            targetTables = gt ? [gt] : [];
+        } else {
+            targetTables = findSheetTablesForDbTable(dbTable);
+        }
+
+        targetTables.forEach(function (targetTable) {
+            if (targetTable.querySelector('tr[data-row][data-id="' + recordId + '"]')) return;
+
+            var newRow = buildNewRow(targetTable);
+            if (!newRow) return;
+
+            newRow.dataset.newRow = '0';
+            newRow.dataset.id = recordId;
+            newRow.classList.remove('inline-add-row');
+
+            applyDataToRow(newRow, data, dbTable);
+            mountDeleteMenu(newRow);
+
+            var addRow = targetTable.querySelector('tbody tr[data-new-row="1"]');
+            if (addRow) {
+                targetTable.querySelector('tbody').insertBefore(newRow, addRow);
+            } else {
+                targetTable.querySelector('tbody').appendChild(newRow);
+            }
+
+            newRow.dataset.snapshot = encodeSnapshot(collectRow(newRow));
+
+            var config = getTableConfig(targetTable);
+            registerRowHandlers(targetTable, newRow, config);
+
+            flashRow(newRow);
+            emitSheetChanged(targetTable);
+        });
+    }
+
+    function applyRemoteDelete(dbTable, recordId) {
+        var rows = document.querySelectorAll('tr[data-row][data-id="' + recordId + '"]');
+        rows.forEach(function (row) {
+            var parentTable = row.closest('[data-sheet-table]');
+            row.remove();
+            if (parentTable) emitSheetChanged(parentTable);
+        });
+    }
+
+    function handleGuestTableMove(recordId, data) {
+        if (!data.event_type || !data.side) return;
+        var correctTable = findGuestTable(data.event_type, data.side);
+        if (!correctTable) return;
+
+        var existingInCorrect = correctTable.querySelector('tr[data-row][data-id="' + recordId + '"]');
+        if (existingInCorrect) return;
+
+        var rowElsewhere = document.querySelector('tr[data-row][data-id="' + recordId + '"]');
+        if (!rowElsewhere) return;
+
+        var oldTable = rowElsewhere.closest('[data-sheet-table]');
+        rowElsewhere.remove();
+        if (oldTable) emitSheetChanged(oldTable);
+
+        var tbody = correctTable.querySelector('tbody');
+        var addRow = tbody.querySelector('tr[data-new-row="1"]');
+        if (addRow) {
+            tbody.insertBefore(rowElsewhere, addRow);
+        } else {
+            tbody.appendChild(rowElsewhere);
+        }
+
+        applyDataToRow(rowElsewhere, data, 'guests');
+        rowElsewhere.dataset.snapshot = encodeSnapshot(collectRow(rowElsewhere));
+
+        var config = getTableConfig(correctTable);
+        registerRowHandlers(correctTable, rowElsewhere, config);
+
+        flashRow(rowElsewhere);
+        emitSheetChanged(correctTable);
+    }
+
+    var reorderBatchTimer = null;
+    var reorderBatchQueue = [];
+
+    function handleReorderBatch(data) {
+        reorderBatchQueue.push(data);
+        clearTimeout(reorderBatchTimer);
+        reorderBatchTimer = setTimeout(function () {
+            reorderBatchQueue.forEach(function (item) {
+                var row = document.querySelector('tr[data-row][data-id="' + item.id + '"]');
+                if (row) {
+                    var sortInput = row.querySelector('[data-field="sort_order"]');
+                    if (sortInput) sortInput.value = String(item.sort_order);
+                    row.dataset.snapshot = encodeSnapshot(collectRow(row));
+                }
+            });
+
+            var sample = reorderBatchQueue[0];
+            if (sample && sample.event_type && sample.side) {
+                resortGuestTable(sample.event_type, sample.side);
+            }
+            reorderBatchQueue = [];
+        }, 500);
+    }
+
+    function resortGuestTable(eventType, side) {
+        var table = findGuestTable(eventType, side);
+        if (!table) return;
+
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+        var addRow = tbody.querySelector('tr[data-new-row="1"]');
+
+        rows.sort(function (a, b) {
+            var aInput = a.querySelector('[data-field="sort_order"]');
+            var bInput = b.querySelector('[data-field="sort_order"]');
+            var aOrder = aInput ? parseInt(aInput.value || '0', 10) : 0;
+            var bOrder = bInput ? parseInt(bInput.value || '0', 10) : 0;
+            return aOrder - bOrder;
+        });
+
+        rows.forEach(function (row) {
+            tbody.insertBefore(row, addRow);
+        });
+    }
+
+    function updateConnectionIndicator(connected) {
+        var indicator = document.getElementById('sse-status');
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.id = 'sse-status';
+            indicator.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:8px;vertical-align:middle;';
+            if (hint) hint.appendChild(indicator);
+        }
+        indicator.style.backgroundColor = connected ? '#28a745' : '#dc3545';
+        indicator.title = connected ? 'Real-time sync active' : 'Reconnecting...';
+    }
+
+    document.addEventListener('focusout', function (event) {
+        var row = event.target.closest('tr[data-row]');
+        if (!row || !row.dataset.pendingRemoteUpdate) return;
+
+        setTimeout(function () {
+            if (!row.dataset.pendingRemoteUpdate) return;
+            try {
+                var pending = JSON.parse(row.dataset.pendingRemoteUpdate);
+                var dbTable = row.dataset.pendingRemoteTable || '';
+                delete row.dataset.pendingRemoteUpdate;
+                delete row.dataset.pendingRemoteTable;
+                applyDataToRow(row, pending, dbTable);
+                row.dataset.snapshot = encodeSnapshot(collectRow(row));
+                var parentTable = row.closest('[data-sheet-table]');
+                if (parentTable) emitSheetChanged(parentTable);
+            } catch (e) {
+                console.error('Error applying pending remote update:', e);
+            }
+        }, 150);
+    }, true);
+
+    (function initSSE() {
+        var eventSource = null;
+        var reconnectAttempts = 0;
+        var disconnectedAt = 0;
+
+        function connect() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource('/events?client_id=' + encodeURIComponent(clientId));
+
+            eventSource.addEventListener('table_change', function (event) {
+                reconnectAttempts = 0;
+                try {
+                    var payload = JSON.parse(event.data);
+                    var op = payload.operation;
+                    var dbTable = payload.table;
+                    var recordId = payload.record_id;
+                    var data = payload.data;
+
+                    if (dbTable === 'guests' && op === 'UPDATE' && data && data.sort_order !== undefined) {
+                        var existingRow = document.querySelector('tr[data-row][data-id="' + recordId + '"]');
+                        var sortInput = existingRow ? existingRow.querySelector('[data-field="sort_order"]') : null;
+                        var oldSort = sortInput ? sortInput.value : null;
+                        if (oldSort !== null && String(data.sort_order) !== oldSort) {
+                            handleReorderBatch(data);
+                        }
+                    }
+
+                    if (op === 'UPDATE') {
+                        applyRemoteUpdate(dbTable, recordId, data);
+                    } else if (op === 'INSERT') {
+                        applyRemoteInsert(dbTable, recordId, data);
+                    } else if (op === 'DELETE') {
+                        applyRemoteDelete(dbTable, recordId);
+                    }
+                } catch (e) {
+                    console.error('SSE parse error:', e);
+                }
+            });
+
+            eventSource.addEventListener('open', function () {
+                if (reconnectAttempts > 0 && disconnectedAt > 0) {
+                    var elapsed = Date.now() - disconnectedAt;
+                    if (elapsed > 60000) {
+                        location.reload();
+                        return;
+                    }
+                }
+                reconnectAttempts = 0;
+                disconnectedAt = 0;
+                updateConnectionIndicator(true);
+            });
+
+            eventSource.addEventListener('error', function () {
+                updateConnectionIndicator(false);
+                eventSource.close();
+                if (disconnectedAt === 0) disconnectedAt = Date.now();
+                reconnectAttempts++;
+                var delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
+                setTimeout(connect, delay);
+            });
+        }
+
+        window.addEventListener('beforeunload', function () {
+            if (eventSource) eventSource.close();
+        });
+
+        connect();
+    })();
 })();
 </script>
 @stack('page-scripts')

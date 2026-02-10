@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EngagementPlannerController;
+use App\Http\Controllers\SseController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,3 +40,12 @@ Route::get('/expenses', [EngagementPlannerController::class, 'expensesPage'])->n
 Route::post('/expenses', [EngagementPlannerController::class, 'storeExpense'])->name('expenses.store');
 Route::put('/expenses/{expense}', [EngagementPlannerController::class, 'updateExpense'])->name('expenses.update');
 Route::delete('/expenses/{expense}', [EngagementPlannerController::class, 'destroyExpense'])->name('expenses.destroy');
+
+Route::get('/events', [SseController::class, 'stream'])
+    ->name('events.stream')
+    ->withoutMiddleware([
+        \App\Http\Middleware\VerifyCsrfToken::class,
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    ]);
