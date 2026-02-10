@@ -83,6 +83,8 @@ class EngagementPlannerController extends Controller
     public function giftsPage(): View
     {
         $gifts = Gift::query()
+            ->orderBy('group_sort_order')
+            ->orderByRaw("COALESCE(group_name, '')")
             ->orderBy('sort_order')
             ->orderBy('created_at')
             ->orderBy('id')
@@ -304,6 +306,8 @@ class EngagementPlannerController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:150'],
+            'group_sort_order' => ['nullable', 'integer', 'min:0'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'down_payment' => ['nullable', 'numeric', 'min:0'],
@@ -312,6 +316,10 @@ class EngagementPlannerController extends Controller
             'status' => ['required', 'in:not_started,on_delivery,complete'],
             'notes' => ['nullable', 'string'],
         ]);
+        $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
+        if (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
+            $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name']);
+        }
         if (!isset($validated['sort_order']) || (int) $validated['sort_order'] <= 0) {
             $validated['sort_order'] = $this->nextGiftSortOrder();
         }
@@ -333,6 +341,8 @@ class EngagementPlannerController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:150'],
+            'group_sort_order' => ['nullable', 'integer', 'min:0'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'down_payment' => ['nullable', 'numeric', 'min:0'],
@@ -341,6 +351,13 @@ class EngagementPlannerController extends Controller
             'status' => ['required', 'in:not_started,on_delivery,complete'],
             'notes' => ['nullable', 'string'],
         ]);
+        $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
+        $groupChanged = $validated['group_name'] !== $this->normalizeGiftGroupName($gift->group_name);
+        if ($groupChanged) {
+            $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name'], (int) $gift->id);
+        } elseif (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
+            $validated['group_sort_order'] = (int) $gift->group_sort_order;
+        }
 
         DB::transaction(function () use ($gift, $validated) {
             $gift->update($validated);
@@ -367,6 +384,37 @@ class EngagementPlannerController extends Controller
         });
 
         return response()->json(['message' => 'Urutan seserahan diperbarui.']);
+    }
+
+    public function reorderGiftGroups(Request $request)
+    {
+        $validated = $request->validate([
+            'ordered_groups' => ['required', 'array'],
+            'ordered_groups.*' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        DB::transaction(function () use ($validated, $request) {
+            $this->setClientId($request);
+            $order = 1;
+
+            foreach ($validated['ordered_groups'] as $groupNameRaw) {
+                $groupName = $this->normalizeGiftGroupName($groupNameRaw);
+
+                $query = Gift::query();
+                if ($groupName === null) {
+                    $query->where(function ($q) {
+                        $q->whereNull('group_name')->orWhere('group_name', '');
+                    });
+                } else {
+                    $query->where('group_name', $groupName);
+                }
+
+                $query->update(['group_sort_order' => $order]);
+                $order++;
+            }
+        });
+
+        return response()->json(['message' => 'Urutan group seserahan diperbarui.']);
     }
 
     public function destroyGift(Request $request, Gift $gift)
@@ -552,6 +600,47 @@ class EngagementPlannerController extends Controller
         $max = (int) Gift::max('sort_order');
 
         return $max + 1;
+    }
+
+    private function nextGiftGroupSortOrder(): int
+    {
+        $max = (int) Gift::max('group_sort_order');
+
+        return $max + 1;
+    }
+
+    private function resolveGiftGroupSortOrder(?string $groupName, ?int $ignoreGiftId = null): int
+    {
+        $query = Gift::query();
+        if ($ignoreGiftId !== null) {
+            $query->where('id', '<>', $ignoreGiftId);
+        }
+
+        if ($groupName === null) {
+            $query->where(function ($q) {
+                $q->whereNull('group_name')->orWhere('group_name', '');
+            });
+        } else {
+            $query->where('group_name', $groupName);
+        }
+
+        $existing = $query->min('group_sort_order');
+        if ($existing !== null && (int) $existing > 0) {
+            return (int) $existing;
+        }
+
+        return $this->nextGiftGroupSortOrder();
+    }
+
+    private function normalizeGiftGroupName($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized === '' ? null : $normalized;
     }
 
     private function respondSuccess(Request $request, string $message, array $payload = [])
