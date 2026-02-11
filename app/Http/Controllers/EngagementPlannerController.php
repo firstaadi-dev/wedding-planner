@@ -381,12 +381,11 @@ class EngagementPlannerController extends Controller
 
     public function storeGift(Request $request)
     {
-        $this->setClientId($request);
-
         $validated = $request->validate($this->giftRules());
         $validated = $this->normalizeGiftPayload($validated);
 
-        $gift = DB::transaction(function () use ($validated) {
+        $gift = DB::transaction(function () use ($validated, $request) {
+            $this->setClientId($request);
             $gift = Gift::create($validated);
             $this->syncAutoExpenseFromGift($gift);
 
@@ -398,12 +397,11 @@ class EngagementPlannerController extends Controller
 
     public function updateGift(Request $request, Gift $gift)
     {
-        $this->setClientId($request);
-
         $validated = $request->validate($this->giftRules());
         $validated = $this->normalizeGiftPayload($validated, $gift);
 
-        DB::transaction(function () use ($gift, $validated) {
+        DB::transaction(function () use ($gift, $validated, $request) {
+            $this->setClientId($request);
             $gift->update($validated);
             $this->syncAutoExpenseFromGift($gift->fresh());
         });

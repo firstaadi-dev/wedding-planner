@@ -701,6 +701,42 @@
         return JSON.stringify(data);
     }
 
+    function nowTs() {
+        return Date.now().toString();
+    }
+
+    function markRowLocalEdit(row) {
+        if (!row) return;
+        row.dataset.lastLocalEditAt = nowTs();
+    }
+
+    function markRowSyncStart(row) {
+        if (!row) return;
+        row.dataset.pendingLocalSync = '1';
+    }
+
+    function markRowSyncDone(row) {
+        if (!row) return;
+        row.dataset.pendingLocalSync = '0';
+        row.dataset.lastLocalSyncAt = nowTs();
+    }
+
+    function consumePendingRemoteUpdate(row) {
+        if (!row) return null;
+        if (!row.dataset.pendingRemoteUpdate) return null;
+        var pending = row.dataset.pendingRemoteUpdate;
+        var dbTable = row.dataset.pendingRemoteTable || '';
+        var pendingAt = Number(row.dataset.pendingRemoteAt || '0');
+        delete row.dataset.pendingRemoteUpdate;
+        delete row.dataset.pendingRemoteTable;
+        delete row.dataset.pendingRemoteAt;
+        return {
+            pending: pending,
+            dbTable: dbTable,
+            pendingAt: Number.isFinite(pendingAt) ? pendingAt : 0
+        };
+    }
+
     async function requestJson(url, method, payload) {
         const response = await fetch(url, {
             method: method,
@@ -1044,8 +1080,13 @@
                 input.addEventListener('change', function () {
                     if (input.tagName === 'SELECT') {
                         applySelectTone(input);
+                        markRowLocalEdit(row);
+                        syncRow(table, row, config).catch(console.error);
                     }
-                    syncRow(table, row, config).catch(console.error);
+                });
+
+                input.addEventListener('input', function () {
+                    markRowLocalEdit(row);
                 });
 
                 input.addEventListener('paste', function (event) {
@@ -1241,6 +1282,7 @@
             }
 
             row.dataset.creating = '1';
+            markRowSyncStart(row);
             setSaving(true);
 
             try {
@@ -1264,7 +1306,9 @@
                     }
                 }
                 row.dataset.pendingEnterField = '';
+                markRowSyncDone(row);
             } finally {
+                row.dataset.pendingLocalSync = '0';
                 setSaving(false);
             }
 
@@ -1281,11 +1325,14 @@
         }
 
         setSaving(true);
+        markRowSyncStart(row);
         try {
             await requestJson(config.updateUrl.replace('__ID__', row.dataset.id), 'PUT', data);
             row.dataset.snapshot = nextSnapshot;
+            markRowSyncDone(row);
             emitSheetChanged(table);
         } finally {
+            row.dataset.pendingLocalSync = '0';
             setSaving(false);
         }
     }
@@ -1494,6 +1541,7 @@
             if (row.contains(document.activeElement)) {
                 row.dataset.pendingRemoteUpdate = JSON.stringify(data);
                 row.dataset.pendingRemoteTable = dbTable;
+                row.dataset.pendingRemoteAt = nowTs();
                 return;
             }
 
@@ -1662,10 +1710,20 @@
         setTimeout(function () {
             if (!row.dataset.pendingRemoteUpdate) return;
             try {
-                var pending = JSON.parse(row.dataset.pendingRemoteUpdate);
-                var dbTable = row.dataset.pendingRemoteTable || '';
-                delete row.dataset.pendingRemoteUpdate;
-                delete row.dataset.pendingRemoteTable;
+                var payload = consumePendingRemoteUpdate(row);
+                if (!payload) return;
+
+                var pendingAt = payload.pendingAt;
+                var lastLocalEditAt = Number(row.dataset.lastLocalEditAt || '0');
+                var lastLocalSyncAt = Number(row.dataset.lastLocalSyncAt || '0');
+                var hasPendingLocalSync = row.dataset.pendingLocalSync === '1';
+
+                if ((hasPendingLocalSync && pendingAt > 0) || (pendingAt > 0 && (lastLocalEditAt >= pendingAt || lastLocalSyncAt >= pendingAt))) {
+                    return;
+                }
+
+                var pending = JSON.parse(payload.pending);
+                var dbTable = payload.dbTable;
                 applyDataToRow(row, pending, dbTable);
                 row.dataset.snapshot = encodeSnapshot(collectRow(row));
                 var parentTable = row.closest('[data-sheet-table]');
