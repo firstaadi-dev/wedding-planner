@@ -5,7 +5,8 @@
 
 @section('content')
 <div class="row g-3 mb-4">
-    <div class="col-md-12"><div class="metric-card"><div class="metric-label">Total Harga Seserahan</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal Seserahan</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Final Semua Kategori</div><div class="metric-value" id="gift-total-final-all">Rp {{ number_format($totalGiftFinal, 0, ',', '.') }}</div></div></div>
 </div>
 
 <div class="planner-card">
@@ -20,8 +21,6 @@
                     <th>Group</th>
                     <th>Harga Awal (Rp)</th>
                     <th>Harga Final (Rp)</th>
-                    <th>Sudah Dibayar (Rp)</th>
-                    <th>Sisa Pelunasan (Rp)</th>
                     <th>Link</th>
                     <th>Keterangan</th>
                     <th>Status</th>
@@ -33,11 +32,17 @@
                     $currentGroup = null;
                     $currentGroupKey = null;
                     $groupIndex = 0;
-                    $groupTotals = $gifts->groupBy(function ($item) {
+                    $groupInitialTotals = $gifts->groupBy(function ($item) {
                         $label = trim((string) $item->group_name);
                         return $label !== '' ? $label : 'Tanpa Group';
                     })->map(function ($items) {
                         return (float) $items->sum('price');
+                    });
+                    $groupFinalTotals = $gifts->groupBy(function ($item) {
+                        $label = trim((string) $item->group_name);
+                        return $label !== '' ? $label : 'Tanpa Group';
+                    })->map(function ($items) {
+                        return (float) $items->sum('paid_amount');
                     });
                 @endphp
                 @foreach($gifts as $gift)
@@ -47,14 +52,15 @@
                     @endphp
                     @if($groupLabel !== $currentGroup || $groupKey !== $currentGroupKey)
                         @if($groupIndex > 0)
-                            <tr class="gift-group-gap"><td colspan="11"></td></tr>
+                            <tr class="gift-group-gap"><td colspan="9"></td></tr>
                         @endif
                         <tr class="gift-group-separator" data-group-key="{{ $groupKey }}">
-                            <td colspan="11">
+                            <td colspan="9">
                                 <div class="gift-group-header">
                                     <div class="gift-group-title-wrap">
                                         <span class="gift-group-title">{{ $groupLabel }}</span>
-                                        <span class="gift-group-total">Total Price: Rp {{ number_format($groupTotals[$groupLabel] ?? 0, 0, ',', '.') }}</span>
+                                        <span class="gift-group-total gift-group-total-initial">Total Harga Awal: Rp {{ number_format($groupInitialTotals[$groupLabel] ?? 0, 0, ',', '.') }}</span>
+                                        <span class="gift-group-total gift-group-total-final">Total Harga Final: Rp {{ number_format($groupFinalTotals[$groupLabel] ?? 0, 0, ',', '.') }}</span>
                                     </div>
                                     <div class="gift-group-actions">
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-add-to-group="1" title="Tambah item ke group ini">+ Item</button>
@@ -83,8 +89,6 @@
                         <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group">{{ $gift->group_name }}</textarea></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="{{ $gift->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $gift->paid_amount ?? 0 }}"></td>
-                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="{{ $gift->down_payment ?? 0 }}"></td>
-                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="{{ max(($gift->paid_amount ?? 0) - ($gift->down_payment ?? 0), 0) }}" readonly></td>
                         <td>
                             <div class="input-group input-group-sm">
                                 <input class="form-control form-control-sm sheet-cell" data-field="link" value="{{ $gift->link }}" placeholder="https://...">
@@ -120,8 +124,6 @@
                     <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></textarea></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
-                    <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
-                    <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="Rp0" readonly></td>
                     <td>
                         <div class="input-group input-group-sm">
                             <input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://...">
@@ -151,8 +153,6 @@
                         <td><textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="group_name" placeholder="Nama group"></textarea></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
-                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
-                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell gift-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="Rp0" readonly></td>
                         <td>
                             <div class="input-group input-group-sm">
                                 <input class="form-control form-control-sm sheet-cell" data-field="link" placeholder="https://...">
@@ -325,18 +325,6 @@
                     });
                 }
 
-                if (row.dataset.remainingBound !== '1') {
-                    row.dataset.remainingBound = '1';
-                    row.querySelectorAll('.gift-paid, .gift-dp').forEach(function (input) {
-                        input.addEventListener('input', function () {
-                            recalcGiftRemaining(row);
-                        });
-                        input.addEventListener('change', function () {
-                            recalcGiftRemaining(row);
-                        });
-                    });
-                }
-
                 if (row.dataset.groupBound !== '1') {
                     row.dataset.groupBound = '1';
                     var groupInput = row.querySelector('[data-field="group_name"]');
@@ -350,7 +338,6 @@
                     }
                 }
 
-                recalcGiftRemaining(row);
                 bindLinkControl(row);
             });
 
@@ -373,22 +360,23 @@
             var tr = document.createElement('tr');
             tr.className = 'gift-group-gap';
             var td = document.createElement('td');
-            td.colSpan = 11;
+            td.colSpan = 9;
             tr.appendChild(td);
             return tr;
         }
 
-        function buildGroupSeparatorRow(groupKey, label, totalPrice) {
+        function buildGroupSeparatorRow(groupKey, label, totalInitial, totalFinal) {
             var tr = document.createElement('tr');
             tr.className = 'gift-group-separator';
             tr.dataset.groupKey = groupKey;
             var td = document.createElement('td');
-            td.colSpan = 11;
+            td.colSpan = 9;
             td.innerHTML = '' +
                 '<div class="gift-group-header">' +
                     '<div class="gift-group-title-wrap">' +
                         '<span class="gift-group-title">' + label + '</span>' +
-                        '<span class="gift-group-total">Total Price: ' + formatCurrencyIdr(totalPrice) + '</span>' +
+                        '<span class="gift-group-total gift-group-total-initial">Total Harga Awal: ' + formatCurrencyIdr(totalInitial) + '</span>' +
+                        '<span class="gift-group-total gift-group-total-final">Total Harga Final: ' + formatCurrencyIdr(totalFinal) + '</span>' +
                     '</div>' +
                     '<div class="gift-group-actions">' +
                         '<button type="button" class="btn btn-sm btn-outline-secondary" data-add-to-group="1" title="Tambah item ke group ini">+ Item</button>' +
@@ -463,14 +451,26 @@
             return groupMap;
         }
 
-        function getGroupTotalsMap(rows) {
+        function getGroupInitialTotalsMap(rows) {
             var totals = new Map();
             rows.forEach(function (row) {
                 var groupInput = row.querySelector('[data-field="group_name"]');
                 var groupKey = normalizeGroupValue(groupInput ? groupInput.value : '');
                 var priceInput = row.querySelector('[data-field="price"]');
-                var price = priceInput ? parseCurrencyIdr(priceInput.value) : 0;
-                totals.set(groupKey, (totals.get(groupKey) || 0) + price);
+                var initialPrice = priceInput ? parseCurrencyIdr(priceInput.value) : 0;
+                totals.set(groupKey, (totals.get(groupKey) || 0) + initialPrice);
+            });
+            return totals;
+        }
+
+        function getGroupFinalTotalsMap(rows) {
+            var totals = new Map();
+            rows.forEach(function (row) {
+                var groupInput = row.querySelector('[data-field="group_name"]');
+                var groupKey = normalizeGroupValue(groupInput ? groupInput.value : '');
+                var paidInput = row.querySelector('[data-field="paid_amount"]');
+                var finalPrice = paidInput ? parseCurrencyIdr(paidInput.value) : 0;
+                totals.set(groupKey, (totals.get(groupKey) || 0) + finalPrice);
             });
             return totals;
         }
@@ -532,7 +532,8 @@
 
             syncGiftSortOrderInputs(tbody);
             var groupRowsMap = getGroupRowsMap(rows);
-            var groupTotals = getGroupTotalsMap(rows);
+            var groupInitialTotals = getGroupInitialTotalsMap(rows);
+            var groupFinalTotals = getGroupFinalTotalsMap(rows);
 
             var orderedGroupKeys = [];
             rows.forEach(function (row) {
@@ -550,8 +551,9 @@
                     tbody.insertBefore(buildGroupGapRow(), groupRows[0]);
                 }
                 var groupLabel = groupKey || 'Tanpa Group';
-                var totalPrice = groupTotals.get(groupKey) || 0;
-                tbody.insertBefore(buildGroupSeparatorRow(groupKey, groupLabel, totalPrice), groupRows[0]);
+                var totalInitial = groupInitialTotals.get(groupKey) || 0;
+                var totalFinal = groupFinalTotals.get(groupKey) || 0;
+                tbody.insertBefore(buildGroupSeparatorRow(groupKey, groupLabel, totalInitial, totalFinal), groupRows[0]);
             });
         }
 
@@ -803,39 +805,74 @@
             });
         }
 
-        function recalcGiftRemaining(row) {
-            var paidInput = row.querySelector('.gift-paid');
-            var dpInput = row.querySelector('.gift-dp');
-            var remInput = row.querySelector('.gift-remaining');
-            if (!paidInput || !dpInput || !remInput) return;
-
-            var paid = parseCurrencyIdr(paidInput.value);
-            var dp = parseCurrencyIdr(dpInput.value);
-            var remaining = Math.max(paid - dp, 0);
-            remInput.value = formatCurrencyIdr(remaining);
-        }
-
         function recalcGiftStats() {
             var rows = document.querySelectorAll('table[data-sheet-table] tbody tr[data-row][data-id]');
             var totalPrice = 0;
+            var totalFinal = 0;
             rows.forEach(function (row) {
                 var priceInput = row.querySelector('[data-field="price"]');
-                if (!priceInput) return;
-                totalPrice += parseCurrencyIdr(priceInput.value);
+                if (priceInput) {
+                    totalPrice += parseCurrencyIdr(priceInput.value);
+                }
+                var paidInput = row.querySelector('[data-field="paid_amount"]');
+                if (paidInput) {
+                    totalFinal += parseCurrencyIdr(paidInput.value);
+                }
             });
             var el = document.getElementById('gift-total-price');
             if (el) {
                 el.textContent = (totalPrice > 0) ? formatCurrencyIdr(totalPrice) : 'Rp0';
             }
+            var finalEl = document.getElementById('gift-total-final-all');
+            if (finalEl) {
+                finalEl.textContent = (totalFinal > 0) ? formatCurrencyIdr(totalFinal) : 'Rp0';
+            }
+        }
+
+        function recalcGiftGroupTotals(table) {
+            if (!table) return;
+            var tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+            var groupInitialTotals = getGroupInitialTotalsMap(rows);
+            var groupFinalTotals = getGroupFinalTotalsMap(rows);
+
+            tbody.querySelectorAll('tr.gift-group-separator').forEach(function (separator) {
+                var groupKey = separator.dataset.groupKey || '';
+                var totalInitial = groupInitialTotals.get(groupKey) || 0;
+                var totalFinal = groupFinalTotals.get(groupKey) || 0;
+
+                var initialEl = separator.querySelector('.gift-group-total-initial');
+                if (initialEl) {
+                    initialEl.textContent = 'Total Harga Awal: ' + formatCurrencyIdr(totalInitial);
+                }
+
+                var finalEl = separator.querySelector('.gift-group-total-final');
+                if (finalEl) {
+                    finalEl.textContent = 'Total Harga Final: ' + formatCurrencyIdr(totalFinal);
+                }
+            });
         }
 
         document.addEventListener('sheet:changed', function (event) {
             const table = event.detail && event.detail.table;
             if (table && table.dataset.createUrl === '{{ route('gifts.store') }}') {
+                var rowCount = table.querySelectorAll('tbody tr[data-row][data-id]').length;
+                var previousRowCount = parseInt(table.dataset.rowCount || String(rowCount), 10);
+                if (!Number.isFinite(previousRowCount)) {
+                    previousRowCount = rowCount;
+                }
+
                 bindGiftRows();
                 ensureGiftRowDecorations();
                 refreshGiftDraggableRows();
-                regroupGiftRows(table);
+                if (rowCount !== previousRowCount) {
+                    regroupGiftRows(table);
+                } else {
+                    recalcGiftGroupTotals(table);
+                }
+                table.dataset.rowCount = String(rowCount);
                 recalcGiftStats();
             }
         });
@@ -847,6 +884,7 @@
         initGiftGroupReorderControls();
         document.querySelectorAll('table[data-sheet-name="gifts"]').forEach(function (table) {
             regroupGiftRows(table);
+            table.dataset.rowCount = String(table.querySelectorAll('tbody tr[data-row][data-id]').length);
         });
     })();
 </script>

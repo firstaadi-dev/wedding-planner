@@ -25,7 +25,7 @@
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpp" data-event-type="lamaran" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-bulk-create-url="{{ route('guests.bulk-store') }}" data-bulk-delete-url="{{ route('guests.bulk-destroy') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
                             <thead>
-                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th></tr>
+                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th><th class="row-actions">Aksi</th></tr>
                             </thead>
                             <tbody>
                             @foreach($lamaranCppGuests as $guest)
@@ -48,6 +48,7 @@
                                             <option value="not_attending" {{ $guest->attendance_status === 'not_attending' ? 'selected' : '' }}>Tidak Hadir</option>
                                         </select>
                                     </td>
+                                    <td class="row-actions"></td>
                                 </tr>
                             @endforeach
                             <tr data-row data-new-row="1" class="inline-add-row">
@@ -60,6 +61,7 @@
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                 <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
+                                <td class="row-actions"></td>
                             </tr>
                             </tbody>
                             <template data-new-row-template>
@@ -68,7 +70,8 @@
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
-                                </tr>
+                                <td class="row-actions"></td>
+                            </tr>
                             </template>
                         </table>
                     </div>
@@ -83,7 +86,7 @@
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpw" data-event-type="lamaran" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-bulk-create-url="{{ route('guests.bulk-store') }}" data-bulk-delete-url="{{ route('guests.bulk-destroy') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
                             <thead>
-                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th></tr>
+                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th><th class="row-actions">Aksi</th></tr>
                             </thead>
                             <tbody>
                             @foreach($lamaranCpwGuests as $guest)
@@ -106,6 +109,7 @@
                                             <option value="not_attending" {{ $guest->attendance_status === 'not_attending' ? 'selected' : '' }}>Tidak Hadir</option>
                                         </select>
                                     </td>
+                                    <td class="row-actions"></td>
                                 </tr>
                             @endforeach
                             <tr data-row data-new-row="1" class="inline-add-row">
@@ -118,6 +122,7 @@
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                 <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
+                                <td class="row-actions"></td>
                             </tr>
                             </tbody>
                             <template data-new-row-template>
@@ -126,7 +131,8 @@
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
-                                </tr>
+                                <td class="row-actions"></td>
+                            </tr>
                             </template>
                         </table>
                     </div>
@@ -152,7 +158,7 @@
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpp" data-event-type="resepsi" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-bulk-create-url="{{ route('guests.bulk-store') }}" data-bulk-delete-url="{{ route('guests.bulk-destroy') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
                             <thead>
-                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th></tr>
+                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th><th class="row-actions">Aksi</th></tr>
                             </thead>
                             <tbody>
                             @foreach($resepsiCppGuests as $guest)
@@ -175,6 +181,7 @@
                                             <option value="not_attending" {{ $guest->attendance_status === 'not_attending' ? 'selected' : '' }}>Tidak Hadir</option>
                                         </select>
                                     </td>
+                                    <td class="row-actions"></td>
                                 </tr>
                             @endforeach
                             <tr data-row data-new-row="1" class="inline-add-row">
@@ -187,6 +194,7 @@
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                 <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
+                                <td class="row-actions"></td>
                             </tr>
                             </tbody>
                             <template data-new-row-template>
@@ -195,7 +203,8 @@
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
-                                </tr>
+                                <td class="row-actions"></td>
+                            </tr>
                             </template>
                         </table>
                     </div>
@@ -210,7 +219,7 @@
                     <div class="table-responsive">
                         <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="guests" data-side="cpw" data-event-type="resepsi" data-reorder-url="{{ route('guests.reorder') }}" data-enter-next-field="name" data-create-url="{{ route('guests.store') }}" data-bulk-create-url="{{ route('guests.bulk-store') }}" data-bulk-delete-url="{{ route('guests.bulk-destroy') }}" data-update-url="/guests/__ID__" data-delete-url="/guests/__ID__" data-required="name,side,event_type,attendance_status">
                             <thead>
-                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th></tr>
+                            <tr><th>Nama</th><th>Kontak</th><th>Notes</th><th>Status</th><th class="row-actions">Aksi</th></tr>
                             </thead>
                             <tbody>
                             @foreach($resepsiCpwGuests as $guest)
@@ -233,6 +242,7 @@
                                             <option value="not_attending" {{ $guest->attendance_status === 'not_attending' ? 'selected' : '' }}>Tidak Hadir</option>
                                         </select>
                                     </td>
+                                    <td class="row-actions"></td>
                                 </tr>
                             @endforeach
                             <tr data-row data-new-row="1" class="inline-add-row">
@@ -245,6 +255,7 @@
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                 <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                 <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
+                                <td class="row-actions"></td>
                             </tr>
                             </tbody>
                             <template data-new-row-template>
@@ -253,7 +264,8 @@
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="phone" placeholder="No. HP"></td>
                                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Catatan"></td>
                                     <td><select class="form-select form-select-sm sheet-cell" data-field="attendance_status"><option value="invited" selected>Diundang</option><option value="attending">Hadir</option><option value="not_attending">Tidak Hadir</option></select></td>
-                                </tr>
+                                <td class="row-actions"></td>
+                            </tr>
                             </template>
                         </table>
                     </div>

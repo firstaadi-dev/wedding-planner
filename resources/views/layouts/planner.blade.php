@@ -615,6 +615,7 @@
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('guests.*')) active @endif" href="{{ route('guests.index') }}">Undangan</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('tasks.*')) active @endif" href="{{ route('tasks.index') }}">To-do</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('gifts.*')) active @endif" href="{{ route('gifts.index') }}">Seserahan</a></li>
+        <li class="nav-item"><a class="nav-link @if(request()->routeIs('vendors.*')) active @endif" href="{{ route('vendors.index') }}">Vendor</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('expenses.*')) active @endif" href="{{ route('expenses.index') }}">Budget & Expense</a></li>
     </ul>
 
@@ -646,6 +647,79 @@
     const tableConfigs = new WeakMap();
     const selectedRows = new Set();
     let lastSelectedRow = null;
+    var scrollStorageKey = 'planner:scroll:' + window.location.pathname;
+    var scrollPendingKey = scrollStorageKey + ':pending';
+
+    function persistScrollPositionForReload() {
+        try {
+            sessionStorage.setItem(scrollStorageKey, JSON.stringify({
+                x: window.scrollX || 0,
+                y: window.scrollY || 0
+            }));
+            sessionStorage.setItem(scrollPendingKey, '1');
+        } catch (e) {
+            // Ignore storage failures (private mode / quota / disabled storage).
+        }
+    }
+
+    function restoreScrollPositionAfterReload() {
+        try {
+            if (sessionStorage.getItem(scrollPendingKey) !== '1') {
+                return;
+            }
+            var raw = sessionStorage.getItem(scrollStorageKey);
+            sessionStorage.removeItem(scrollPendingKey);
+            if (!raw) return;
+            var payload = JSON.parse(raw);
+            var x = Number(payload && payload.x);
+            var y = Number(payload && payload.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            var docEl = document.documentElement;
+            var previousBehavior = docEl.style.scrollBehavior;
+            docEl.style.scrollBehavior = 'auto';
+            window.scrollTo(x, y);
+            requestAnimationFrame(function () {
+                window.scrollTo(x, y);
+                docEl.style.scrollBehavior = previousBehavior;
+            });
+        } catch (e) {
+            // Ignore invalid/blocked storage state.
+        }
+    }
+
+    function preserveScrollPosition(callback) {
+        var currentX = window.scrollX || 0;
+        var currentY = window.scrollY || 0;
+        var docEl = document.documentElement;
+        var previousBehavior = docEl.style.scrollBehavior;
+        var previousAnchor = docEl.style.overflowAnchor;
+        docEl.style.scrollBehavior = 'auto';
+        docEl.style.overflowAnchor = 'none';
+        callback();
+
+        if (Math.abs((window.scrollX || 0) - currentX) > 1 || Math.abs((window.scrollY || 0) - currentY) > 1) {
+            window.scrollTo(currentX, currentY);
+        }
+
+        requestAnimationFrame(function () {
+            if (Math.abs((window.scrollX || 0) - currentX) > 1 || Math.abs((window.scrollY || 0) - currentY) > 1) {
+                window.scrollTo(currentX, currentY);
+            }
+            docEl.style.scrollBehavior = previousBehavior;
+            docEl.style.overflowAnchor = previousAnchor;
+        });
+    }
+
+    window.addEventListener('beforeunload', persistScrollPositionForReload);
+    restoreScrollPositionAfterReload();
+
+    // Guardrail: prevent accidental full-page form submit inside planner shell.
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form || !form.closest || !form.closest('.planner-wrap')) return;
+        if (form.dataset && form.dataset.allowNavigation === '1') return;
+        event.preventDefault();
+    });
 
     function setSaving(state) {
         if (!hint) return;
@@ -837,9 +911,11 @@
     }
 
     function emitSheetChanged(table) {
-        document.dispatchEvent(new CustomEvent('sheet:changed', {
-            detail: { table: table }
-        }));
+        preserveScrollPosition(function () {
+            document.dispatchEvent(new CustomEvent('sheet:changed', {
+                detail: { table: table }
+            }));
+        });
     }
 
     document.addEventListener('click', function (event) {
@@ -1122,6 +1198,9 @@
             });
         }
 
+        if (row.dataset.id && row.querySelector('.row-actions') && !row.querySelector('[data-delete-row]')) {
+            mountDeleteMenu(row);
+        }
         bindDeleteHandler(table, row, config);
         bindSwipeDelete(table, row, config);
     }
@@ -1448,12 +1527,14 @@
         'guests': 'guests',
         'engagement_tasks': 'tasks',
         'gifts': 'gifts',
+        'vendors': 'vendors',
         'expenses': 'expenses'
     };
 
     var URL_TABLE_MAP = {
         '/tasks': 'engagement_tasks',
         '/gifts': 'gifts',
+        '/vendors': 'vendors',
         '/expenses': 'expenses',
         '/guests': 'guests'
     };
@@ -1788,8 +1869,7 @@
                 if (reconnectAttempts > 0 && disconnectedAt > 0) {
                     var elapsed = Date.now() - disconnectedAt;
                     if (elapsed > 60000) {
-                        location.reload();
-                        return;
+                        console.warn('SSE reconnected after long disconnect; skip auto reload to preserve user context.');
                     }
                 }
                 reconnectAttempts = 0;

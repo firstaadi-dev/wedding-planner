@@ -6,9 +6,12 @@ use App\Models\EngagementTask;
 use App\Models\Expense;
 use App\Models\Gift;
 use App\Models\Guest;
+use App\Models\Vendor;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class EngagementPlannerController extends Controller
@@ -71,12 +74,36 @@ class EngagementPlannerController extends Controller
             ->orderBy('start_date')
             ->orderByDesc('created_at')
             ->get();
+        $vendorNames = Vendor::query()
+            ->select('vendor_name')
+            ->distinct()
+            ->orderBy('vendor_name')
+            ->pluck('vendor_name');
 
         return view('planner.tasks', [
             'tasks' => $tasks,
+            'vendorNames' => $vendorNames,
             'stats' => [
                 'openTasks' => $tasks->whereIn('task_status', ['not_started', 'in_progress'])->count(),
                 'doneTasks' => $tasks->where('task_status', 'done')->count(),
+            ],
+        ]);
+    }
+
+    public function vendorsPage(): View
+    {
+        $vendors = Vendor::query()
+            ->orderByRaw("status = 'done'")
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('planner.vendors', [
+            'vendors' => $vendors,
+            'stats' => [
+                'totalVendors' => $vendors->count(),
+                'activeVendors' => $vendors->whereIn('status', ['not_started', 'in_progress'])->count(),
+                'doneVendors' => $vendors->where('status', 'done')->count(),
             ],
         ]);
     }
@@ -94,6 +121,7 @@ class EngagementPlannerController extends Controller
         return view('planner.gifts', [
             'gifts' => $gifts,
             'totalGiftBudget' => (float) Gift::sum('price'),
+            'totalGiftFinal' => (float) Gift::sum('paid_amount'),
         ]);
     }
 
@@ -306,10 +334,10 @@ class EngagementPlannerController extends Controller
         $this->setClientId($request);
 
         $validated = $request->validate($this->taskRules());
-        $validated = $this->prepareTaskPayload($validated);
 
         $task = DB::transaction(function () use ($validated) {
-            $task = EngagementTask::create($validated);
+            $payload = $this->prepareTaskPayload($validated);
+            $task = EngagementTask::create($payload);
             $this->syncAutoExpenseFromTask($task);
 
             return $task;
@@ -323,10 +351,10 @@ class EngagementPlannerController extends Controller
         $this->setClientId($request);
 
         $validated = $request->validate($this->taskRules());
-        $validated = $this->prepareTaskPayload($validated);
 
         DB::transaction(function () use ($task, $validated) {
-            $task->update($validated);
+            $payload = $this->prepareTaskPayload($validated);
+            $task->update($payload);
             $this->syncAutoExpenseFromTask($task->fresh());
         });
 
@@ -377,6 +405,87 @@ class EngagementPlannerController extends Controller
         });
 
         return $this->respondSuccess($request, 'Task terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
+    public function storeVendor(Request $request)
+    {
+        $this->setClientId($request);
+
+        $validated = $this->normalizeVendorPayload($request->validate($this->vendorRules()));
+        $vendor = DB::transaction(function () use ($validated) {
+            return $this->upsertVendorByName($validated);
+        });
+
+        return $this->respondSuccess($request, 'Vendor berhasil ditambahkan.', ['record' => $vendor->fresh()]);
+    }
+
+    public function updateVendor(Request $request, Vendor $vendor)
+    {
+        $this->setClientId($request);
+
+        $validated = $this->normalizeVendorPayload($request->validate($this->vendorRules()));
+        $duplicate = $this->findVendorByName($validated['vendor_name'] ?? null, (int) $vendor->id);
+        if ($duplicate !== null) {
+            $message = 'Nama vendor sudah digunakan vendor lain.';
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->withErrors(['vendor_name' => $message]);
+        }
+
+        try {
+            $vendor->update($validated);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueViolation($exception)) {
+                $message = 'Nama vendor sudah digunakan vendor lain.';
+                if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                    return response()->json(['message' => $message], 422);
+                }
+
+                return back()->withErrors(['vendor_name' => $message]);
+            }
+            throw $exception;
+        }
+
+        return $this->respondSuccess($request, 'Vendor diperbarui.', ['record' => $vendor->fresh()]);
+    }
+
+    public function destroyVendor(Request $request, Vendor $vendor)
+    {
+        $this->setClientId($request);
+        $vendor->delete();
+
+        return $this->respondSuccess($request, 'Vendor dihapus.');
+    }
+
+    public function storeVendorsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $rows = $this->validateBulkRows($request, $this->vendorRules());
+        $records = [];
+
+        DB::transaction(function () use (&$records, $rows) {
+            foreach ($rows as $validated) {
+                $payload = $this->normalizeVendorPayload($validated);
+                $records[] = $this->upsertVendorByName($payload);
+            }
+        });
+
+        return $this->respondSuccess($request, 'Vendor bulk berhasil ditambahkan.', ['records' => $records]);
+    }
+
+    public function destroyVendorsBulk(Request $request)
+    {
+        $this->setClientId($request);
+        $ids = $this->validateBulkIds($request);
+        if (empty($ids)) {
+            return $this->respondSuccess($request, 'Tidak ada vendor yang dihapus.', ['deleted_count' => 0]);
+        }
+
+        $deletedCount = Vendor::query()->whereIn('id', $ids)->delete();
+
+        return $this->respondSuccess($request, 'Vendor terpilih dihapus.', ['deleted_count' => $deletedCount]);
     }
 
     public function storeGift(Request $request)
@@ -663,6 +772,19 @@ class EngagementPlannerController extends Controller
         ];
     }
 
+    private function vendorRules(): array
+    {
+        return [
+            'vendor_name' => ['required', 'string', 'max:255'],
+            'contact_name' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:80'],
+            'contact_email' => ['nullable', 'string', 'max:255'],
+            'website' => ['nullable', 'string', 'max:2048'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'in:not_started,in_progress,done'],
+        ];
+    }
+
     private function giftRules(): array
     {
         return [
@@ -693,17 +815,178 @@ class EngagementPlannerController extends Controller
 
     private function prepareTaskPayload(array $validated): array
     {
-        $paid = isset($validated['paid_amount']) ? (float) $validated['paid_amount'] : 0.0;
-        $dp = isset($validated['down_payment']) ? (float) $validated['down_payment'] : 0.0;
+        $validated['vendor'] = $this->ensureTaskVendorExists($validated['vendor'] ?? null);
+        $validated['price'] = $this->normalizeNonNegativeNumber($validated, 'price');
+        $validated['paid_amount'] = $this->normalizeNonNegativeNumber($validated, 'paid_amount');
+        $validated['down_payment'] = $this->normalizeNonNegativeNumber($validated, 'down_payment');
+
+        $paid = $validated['paid_amount'];
+        $dp = $validated['down_payment'];
         $validated['remaining_amount'] = max($paid - $dp, 0);
         $validated['status'] = $validated['task_status'] === 'done' ? 'done' : 'pending';
 
         return $validated;
     }
 
+    private function ensureTaskVendorExists($value): ?string
+    {
+        $vendorName = $this->normalizeVendorName($value);
+        if ($vendorName === null) {
+            return null;
+        }
+
+        $vendor = $this->upsertVendorByName([
+            'vendor_name' => $vendorName,
+            'status' => 'not_started',
+        ]);
+
+        return $vendor->vendor_name;
+    }
+
+    private function upsertVendorByName(array $payload): Vendor
+    {
+        $payload = $this->normalizeVendorPayload($payload);
+        $vendorName = $payload['vendor_name'] ?? '';
+        if ($vendorName === '') {
+            throw ValidationException::withMessages([
+                'vendor_name' => 'Nama vendor wajib diisi.',
+            ]);
+        }
+
+        $existing = $this->findVendorByName($vendorName);
+        if ($existing !== null) {
+            $merged = $this->mergeVendorPayload($existing, $payload);
+            if (!empty($merged)) {
+                $existing->fill($merged);
+                if ($existing->isDirty()) {
+                    $existing->save();
+                }
+            }
+
+            return $existing->fresh();
+        }
+
+        try {
+            return Vendor::create($payload);
+        } catch (QueryException $exception) {
+            if (!$this->isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            $existing = $this->findVendorByName($vendorName);
+            if ($existing === null) {
+                throw $exception;
+            }
+
+            $merged = $this->mergeVendorPayload($existing, $payload);
+            if (!empty($merged)) {
+                $existing->fill($merged);
+                if ($existing->isDirty()) {
+                    $existing->save();
+                }
+            }
+
+            return $existing->fresh();
+        }
+    }
+
+    private function findVendorByName($value, ?int $ignoreVendorId = null): ?Vendor
+    {
+        $vendorName = $this->normalizeVendorName($value);
+        if ($vendorName === null) {
+            return null;
+        }
+
+        $query = Vendor::query()
+            ->whereRaw('LOWER(vendor_name) = ?', [strtolower($vendorName)]);
+        if ($ignoreVendorId !== null && $ignoreVendorId > 0) {
+            $query->where('id', '<>', $ignoreVendorId);
+        }
+
+        return $query->first();
+    }
+
+    private function mergeVendorPayload(Vendor $existing, array $incoming): array
+    {
+        $incomingStatus = $incoming['status'] ?? null;
+
+        return [
+            'vendor_name' => $incoming['vendor_name'] ?? $existing->vendor_name,
+            'contact_name' => $incoming['contact_name'] ?? $existing->contact_name,
+            'contact_number' => $incoming['contact_number'] ?? $existing->contact_number,
+            'contact_email' => $incoming['contact_email'] ?? $existing->contact_email,
+            'website' => $incoming['website'] ?? $existing->website,
+            'reference' => $incoming['reference'] ?? $existing->reference,
+            'status' => $this->resolveVendorStatus($existing->status, $incomingStatus),
+        ];
+    }
+
+    private function resolveVendorStatus(?string $current, ?string $incoming): string
+    {
+        $rank = [
+            'not_started' => 1,
+            'in_progress' => 2,
+            'done' => 3,
+        ];
+
+        $currentStatus = $current ?? 'not_started';
+        $incomingStatus = $incoming ?? $currentStatus;
+        $currentRank = $rank[$currentStatus] ?? 0;
+        $incomingRank = $rank[$incomingStatus] ?? 0;
+
+        return $incomingRank >= $currentRank ? $incomingStatus : $currentStatus;
+    }
+
+    private function normalizeVendorPayload(array $payload): array
+    {
+        $payload['vendor_name'] = $this->normalizeVendorName($payload['vendor_name'] ?? null) ?? '';
+        $payload['contact_name'] = $this->normalizeVendorText($payload['contact_name'] ?? null);
+        $payload['contact_number'] = $this->normalizeVendorText($payload['contact_number'] ?? null);
+        $payload['contact_email'] = $this->normalizeVendorText($payload['contact_email'] ?? null);
+        if ($payload['contact_email'] !== null) {
+            $payload['contact_email'] = strtolower($payload['contact_email']);
+        }
+        $payload['website'] = $this->normalizeVendorText($payload['website'] ?? null);
+        $payload['reference'] = $this->normalizeVendorText($payload['reference'] ?? null);
+        $payload['status'] = $payload['status'] ?? 'not_started';
+
+        return $payload;
+    }
+
+    private function normalizeVendorName($value): ?string
+    {
+        return $this->normalizeVendorText($value);
+    }
+
+    private function normalizeVendorText($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $value));
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        return $normalized;
+    }
+
+    private function isUniqueViolation(QueryException $exception): bool
+    {
+        $sqlState = $exception->errorInfo[0] ?? null;
+
+        return $sqlState === '23505';
+    }
+
     private function normalizeGiftPayload(array $validated, ?Gift $gift = null): array
     {
+        $validated['price'] = $this->normalizeNonNegativeNumber($validated, 'price');
+        $validated['paid_amount'] = $this->normalizeNonNegativeNumber($validated, 'paid_amount');
+        // Seserahan tidak pakai DP parsial: nilai sudah dibayar mengikuti harga final.
+        $validated['down_payment'] = $validated['paid_amount'];
         $validated['group_name'] = $this->normalizeGiftGroupName($validated['group_name'] ?? null);
+
         if ($gift === null) {
             if (!isset($validated['group_sort_order']) || (int) $validated['group_sort_order'] <= 0) {
                 $validated['group_sort_order'] = $this->resolveGiftGroupSortOrder($validated['group_name']);
@@ -723,6 +1006,15 @@ class EngagementPlannerController extends Controller
         }
 
         return $validated;
+    }
+
+    private function normalizeNonNegativeNumber(array $payload, string $key): float
+    {
+        if (!array_key_exists($key, $payload) || $payload[$key] === null || $payload[$key] === '') {
+            return 0.0;
+        }
+
+        return max((float) $payload[$key], 0.0);
     }
 
     private function validateBulkRows(Request $request, array $rules): array
@@ -807,7 +1099,7 @@ class EngagementPlannerController extends Controller
     {
         $base = max((float) ($gift->price ?? 0), 0);
         $paid = max((float) ($gift->paid_amount ?? 0), 0);
-        $downPayment = max((float) ($gift->down_payment ?? 0), 0);
+        $downPayment = $paid;
         $remaining = max($paid - $downPayment, 0);
 
         if ($base <= 0 && $paid <= 0 && $downPayment <= 0) {

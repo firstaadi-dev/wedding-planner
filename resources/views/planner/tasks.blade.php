@@ -12,6 +12,11 @@
 <div class="planner-card">
     <div class="card-header pt-3 px-3 fw-semibold">To-do Engagement</div>
     <div class="card-body pt-2">
+        <datalist id="task-vendor-options">
+            @foreach($vendorNames as $vendorName)
+                <option value="{{ $vendorName }}"></option>
+            @endforeach
+        </datalist>
         <div class="table-responsive">
             <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-enter-next-field="title" data-create-url="{{ route('tasks.store') }}" data-bulk-create-url="{{ route('tasks.bulk-store') }}" data-bulk-delete-url="{{ route('tasks.bulk-destroy') }}" data-update-url="/tasks/__ID__" data-delete-url="/tasks/__ID__" data-required="title,task_status">
                 <thead>
@@ -33,7 +38,7 @@
                 @foreach($tasks as $task)
                     <tr data-row data-id="{{ $task->id }}">
                         <td><input class="form-control form-control-sm sheet-cell" data-field="title" value="{{ $task->title }}"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" value="{{ $task->vendor }}"></td>
+                        <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" value="{{ $task->vendor }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="{{ $task->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $task->paid_amount ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="{{ $task->down_payment ?? 0 }}"></td>
@@ -54,7 +59,7 @@
 
                 <tr data-row data-new-row="1" class="inline-add-row">
                     <td><input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task"></td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" placeholder="Vendor"></td>
+                    <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" placeholder="Vendor"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
@@ -76,7 +81,7 @@
                 <template data-new-row-template>
                     <tr data-row data-new-row="1" class="inline-add-row">
                         <td><input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="vendor" placeholder="Vendor"></td>
+                        <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" placeholder="Vendor"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="Rp0"></td>
@@ -103,6 +108,34 @@
 @push('page-scripts')
 <script>
     (function () {
+        const vendorDataList = document.getElementById('task-vendor-options');
+        const vendorOptionSet = new Set();
+
+        function normalizeVendorName(value) {
+            return String(value || '').trim();
+        }
+
+        function rememberVendorOption(value) {
+            const normalized = normalizeVendorName(value);
+            if (!normalized || !vendorDataList) return;
+
+            const key = normalized.toLowerCase();
+            if (vendorOptionSet.has(key)) return;
+
+            vendorOptionSet.add(key);
+            const option = document.createElement('option');
+            option.value = normalized;
+            vendorDataList.appendChild(option);
+        }
+
+        if (vendorDataList) {
+            vendorDataList.querySelectorAll('option').forEach(function (option) {
+                const normalized = normalizeVendorName(option.value);
+                if (!normalized) return;
+                vendorOptionSet.add(normalized.toLowerCase());
+            });
+        }
+
         function parseCurrencyIdr(value) {
             if (value === null || value === undefined) return 0;
             const raw = String(value).trim();
@@ -169,6 +202,21 @@
             remInput.value = formatCurrencyIdr(remaining);
         }
 
+        function bindVendorInput(input) {
+            if (!input || input.dataset.vendorBound === '1') return;
+            input.dataset.vendorBound = '1';
+
+            rememberVendorOption(input.value);
+
+            input.addEventListener('change', function () {
+                rememberVendorOption(input.value);
+            });
+
+            input.addEventListener('blur', function () {
+                rememberVendorOption(input.value);
+            });
+        }
+
         function bindTaskRows() {
             document.querySelectorAll('table[data-create-url="{{ route('tasks.store') }}"] tbody tr[data-row]').forEach(function (row) {
                 if (row.dataset.remainingBound === '1') return;
@@ -185,6 +233,10 @@
                     input.addEventListener('change', function () {
                         recalcTaskRemaining(row);
                     });
+                });
+
+                row.querySelectorAll('.task-vendor-input').forEach(function (input) {
+                    bindVendorInput(input);
                 });
 
                 recalcTaskRemaining(row);

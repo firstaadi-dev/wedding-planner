@@ -35,6 +35,13 @@ Route::post('/tasks/bulk-delete', [EngagementPlannerController::class, 'destroyT
 Route::put('/tasks/{task}', [EngagementPlannerController::class, 'updateTask'])->name('tasks.update');
 Route::delete('/tasks/{task}', [EngagementPlannerController::class, 'destroyTask'])->name('tasks.destroy');
 
+Route::get('/vendors', [EngagementPlannerController::class, 'vendorsPage'])->name('vendors.index');
+Route::post('/vendors', [EngagementPlannerController::class, 'storeVendor'])->name('vendors.store');
+Route::post('/vendors/bulk', [EngagementPlannerController::class, 'storeVendorsBulk'])->name('vendors.bulk-store');
+Route::post('/vendors/bulk-delete', [EngagementPlannerController::class, 'destroyVendorsBulk'])->name('vendors.bulk-destroy');
+Route::put('/vendors/{vendor}', [EngagementPlannerController::class, 'updateVendor'])->name('vendors.update');
+Route::delete('/vendors/{vendor}', [EngagementPlannerController::class, 'destroyVendor'])->name('vendors.destroy');
+
 Route::get('/gifts', [EngagementPlannerController::class, 'giftsPage'])->name('gifts.index');
 Route::post('/gifts', [EngagementPlannerController::class, 'storeGift'])->name('gifts.store');
 Route::post('/gifts/bulk', [EngagementPlannerController::class, 'storeGiftsBulk'])->name('gifts.bulk-store');
