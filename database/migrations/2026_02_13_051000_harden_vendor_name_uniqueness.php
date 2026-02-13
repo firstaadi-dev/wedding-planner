@@ -17,6 +17,7 @@ class HardenVendorNameUniqueness extends Migration
         if ($driver === 'pgsql') {
             DB::statement("UPDATE vendors SET vendor_name = BTRIM(REGEXP_REPLACE(vendor_name, '\\s+', ' ', 'g'))");
             DB::statement("UPDATE vendors SET vendor_name = 'Vendor ' || id WHERE vendor_name IS NULL OR BTRIM(vendor_name) = ''");
+            DB::statement("UPDATE vendors SET contact_number = NULLIF(REGEXP_REPLACE(COALESCE(contact_number, ''), '\\D+', '', 'g'), '')");
 
             DB::statement(
                 "WITH ranked AS (" .
@@ -63,6 +64,10 @@ class HardenVendorNameUniqueness extends Migration
         }
 
         DB::statement("UPDATE vendors SET vendor_name = TRIM(vendor_name)");
+        DB::statement(
+            "UPDATE vendors SET contact_number = NULLIF(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(contact_number, '+', ''), '-', ''), ' ', ''), '(', ''), ')', ''), '') " .
+            "WHERE contact_number IS NOT NULL"
+        );
         DB::statement("UPDATE engagement_tasks SET vendor = NULLIF(TRIM(vendor), '') WHERE vendor IS NOT NULL");
         DB::statement("CREATE UNIQUE INDEX vendors_name_ci_unique_idx ON vendors (vendor_name)");
     }

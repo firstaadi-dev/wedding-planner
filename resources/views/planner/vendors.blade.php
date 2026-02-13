@@ -32,7 +32,7 @@
                     <tr data-row data-id="{{ $vendor->id }}">
                         <td><input class="form-control form-control-sm sheet-cell" data-field="vendor_name" value="{{ $vendor->vendor_name }}"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="contact_name" value="{{ $vendor->contact_name }}"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" value="{{ $vendor->contact_number }}"></td>
+                        <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" data-phone-digits="1" data-phone-display="id" value="{{ $vendor->contact_number }}"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="contact_email" value="{{ $vendor->contact_email }}"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="website" value="{{ $vendor->website }}"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="reference" value="{{ $vendor->reference }}"></td>
@@ -57,7 +57,7 @@
                 <tr data-row data-new-row="1" class="inline-add-row">
                     <td><input class="form-control form-control-sm sheet-cell" data-field="vendor_name" placeholder="Vendor Name"></td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="contact_name" placeholder="Contact Name"></td>
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" placeholder="Contact Number"></td>
+                    <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" data-phone-digits="1" data-phone-display="id" placeholder="Contact Number"></td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="contact_email" placeholder="Contact Email"></td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="website" placeholder="Website"></td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="reference" placeholder="Reference"></td>
@@ -76,7 +76,7 @@
                     <tr data-row data-new-row="1" class="inline-add-row">
                         <td><input class="form-control form-control-sm sheet-cell" data-field="vendor_name" placeholder="Vendor Name"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="contact_name" placeholder="Contact Name"></td>
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" placeholder="Contact Number"></td>
+                        <td><input class="form-control form-control-sm sheet-cell" data-field="contact_number" data-phone-digits="1" data-phone-display="id" placeholder="Contact Number"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="contact_email" placeholder="Contact Email"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="website" placeholder="Website"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="reference" placeholder="Reference"></td>

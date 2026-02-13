@@ -726,6 +726,64 @@
         hint.classList.toggle('saving', state);
     }
 
+    function normalizePhoneDigits(value) {
+        if (value === null || value === undefined) return null;
+        var digits = String(value).replace(/\D+/g, '');
+        return digits === '' ? null : digits;
+    }
+
+    function formatPhoneDisplayId(value) {
+        var digits = normalizePhoneDigits(value);
+        if (!digits) return '';
+
+        var normalized = digits;
+        if (normalized.indexOf('0') === 0) {
+            normalized = '62' + normalized.slice(1);
+        } else if (normalized.indexOf('8') === 0) {
+            normalized = '62' + normalized;
+        } else if (normalized.indexOf('62') !== 0) {
+            return '+' + normalized;
+        }
+
+        var local = normalized.slice(2);
+        if (!local) return '+62';
+
+        var parts = [];
+        if (local.length <= 3) {
+            parts.push(local);
+        } else {
+            parts.push(local.slice(0, 3));
+            var remaining = local.slice(3);
+            while (remaining.length > 0) {
+                var take = Math.min(4, remaining.length);
+                parts.push(remaining.slice(0, take));
+                remaining = remaining.slice(take);
+            }
+        }
+
+        return '+62 ' + parts.join('-');
+    }
+
+    function bindPhoneDisplayInput(input) {
+        if (!input || input.dataset.phoneDisplayBound === '1') return;
+        input.dataset.phoneDisplayBound = '1';
+
+        input.value = formatPhoneDisplayId(input.value);
+
+        input.addEventListener('focus', function () {
+            var digits = normalizePhoneDigits(input.value);
+            input.value = digits || '';
+        });
+
+        input.addEventListener('blur', function () {
+            input.value = formatPhoneDisplayId(input.value);
+        });
+
+        input.addEventListener('change', function () {
+            input.value = formatPhoneDisplayId(input.value);
+        });
+    }
+
     function normalizeValue(input) {
         const raw = (input.value || '').trim();
         if (input.dataset.currencyIdr === '1') {
@@ -752,6 +810,9 @@
             }
             const parsed = Number(normalized);
             return Number.isFinite(parsed) ? String(parsed) : null;
+        }
+        if (input.dataset.phoneDigits === '1') {
+            return normalizePhoneDigits(raw);
         }
         return raw === '' ? null : raw;
     }
@@ -1132,6 +1193,9 @@
                 if (input.tagName === 'SELECT') {
                     applySelectTone(input);
                 }
+                if (input.dataset.phoneDisplay === 'id') {
+                    bindPhoneDisplayInput(input);
+                }
                 input.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
                         event.preventDefault();
@@ -1258,7 +1322,11 @@
             return;
         }
 
-        input.value = raw;
+        if (input.dataset.phoneDisplay === 'id' && input !== document.activeElement) {
+            input.value = formatPhoneDisplayId(raw);
+        } else {
+            input.value = raw;
+        }
         if (input.tagName === 'TEXTAREA') {
             autoGrowTextarea(input);
         }
@@ -1594,6 +1662,8 @@
             if (input.dataset.currencyIdr === '1' && input !== document.activeElement) {
                 var num = Number(value);
                 input.value = (Number.isFinite(num) && num > 0) ? formatCurrencyIdr(num) : '';
+            } else if (input.dataset.phoneDisplay === 'id' && input !== document.activeElement) {
+                input.value = formatPhoneDisplayId(value);
             } else if (input.tagName === 'SELECT') {
                 input.value = String(value);
                 applySelectTone(input);

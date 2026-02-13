@@ -941,7 +941,7 @@ class EngagementPlannerController extends Controller
     {
         $payload['vendor_name'] = $this->normalizeVendorName($payload['vendor_name'] ?? null) ?? '';
         $payload['contact_name'] = $this->normalizeVendorText($payload['contact_name'] ?? null);
-        $payload['contact_number'] = $this->normalizeVendorText($payload['contact_number'] ?? null);
+        $payload['contact_number'] = $this->normalizeVendorPhoneDigits($payload['contact_number'] ?? null);
         $payload['contact_email'] = $this->normalizeVendorText($payload['contact_email'] ?? null);
         if ($payload['contact_email'] !== null) {
             $payload['contact_email'] = strtolower($payload['contact_email']);
@@ -970,6 +970,20 @@ class EngagementPlannerController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function normalizeVendorPhoneDigits($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        return $digits;
     }
 
     private function isUniqueViolation(QueryException $exception): bool
