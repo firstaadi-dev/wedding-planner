@@ -19,6 +19,7 @@ Route::get('/', [EngagementPlannerController::class, 'index'])->name('engagement
 Route::get('/healthz', function () {
     return response('ok', 200);
 })->name('healthz');
+Route::get('/export/excel', [EngagementPlannerController::class, 'exportExcel'])->name('planner.export-excel');
 
 Route::get('/guests', [EngagementPlannerController::class, 'guestsPage'])->name('guests.index');
 Route::post('/guests', [EngagementPlannerController::class, 'storeGuest'])->name('guests.store');

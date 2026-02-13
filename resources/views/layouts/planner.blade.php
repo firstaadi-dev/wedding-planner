@@ -463,6 +463,25 @@
             text-align: center;
         }
 
+        .export-excel-btn {
+            display: inline-block;
+            margin-left: 10px;
+            border: 1px solid #8fb6d8;
+            color: #25527a;
+            background: #f1f8ff;
+            border-radius: 8px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            line-height: 1.2;
+            text-decoration: none;
+        }
+
+        .export-excel-btn:hover {
+            background: #e7f2ff;
+            color: #1f476a;
+        }
+
         .bulk-delete-btn {
             margin-left: 10px;
             border: 1px solid #d8a6a6;
@@ -631,6 +650,8 @@
     @endif
 
     <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.
+        {{-- Export button hidden sementara karena investigasi stabilitas exporter. --}}
+        {{-- <a class="export-excel-btn" href="{{ route('planner.export-excel') }}">Export Excel</a> --}}
         <button type="button" class="bulk-delete-btn" id="bulk-delete-selected" hidden>Hapus Terpilih (0)</button>
     </div>
 

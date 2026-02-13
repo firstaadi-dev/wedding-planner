@@ -7,18 +7,25 @@ use App\Models\Expense;
 use App\Models\Gift;
 use App\Models\Guest;
 use App\Models\Vendor;
+use App\Services\PlannerExcelExportService;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EngagementPlannerController extends Controller
 {
     public function index()
     {
         return redirect()->route('guests.index');
+    }
+
+    public function exportExcel(PlannerExcelExportService $plannerExcelExportService): StreamedResponse
+    {
+        return $plannerExcelExportService->download();
     }
 
     public function guestsPage(): View
