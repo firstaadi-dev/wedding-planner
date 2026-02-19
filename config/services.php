@@ -34,6 +34,8 @@ return [
         'api_key' => env('WORKOS_API_KEY'),
         'client_id' => env('WORKOS_CLIENT_ID'),
         'redirect_uri' => env('WORKOS_REDIRECT_URI'),
+        'connect_timeout_seconds' => (int) env('WORKOS_CONNECT_TIMEOUT_SECONDS', 10),
+        'timeout_seconds' => (int) env('WORKOS_TIMEOUT_SECONDS', 20),
     ],
 
     'resend' => [

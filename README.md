@@ -123,6 +123,8 @@ Project ini sekarang menggunakan WorkOS untuk login/register (hosted AuthKit).
    WORKOS_API_KEY=sk_test_xxxxxxxxx
    WORKOS_CLIENT_ID=client_xxxxxxxxx
    WORKOS_REDIRECT_URI="${APP_URL}/auth/workos/callback"
+   WORKOS_CONNECT_TIMEOUT_SECONDS=10
+   WORKOS_TIMEOUT_SECONDS=20
    SESSION_DRIVER=cookie
    SESSION_SECURE_COOKIE=true
    SESSION_SAME_SITE=none

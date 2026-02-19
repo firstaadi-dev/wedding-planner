@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Support\Workos\TimeoutCurlRequestClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
+use WorkOS\Client as WorkosClient;
 use WorkOS\UserManagement;
 use WorkOS\WorkOS;
 
@@ -53,12 +55,14 @@ class WorkosAuthController extends Controller
 
         try {
             $userManagement = $this->makeUserManagement();
+            Log::info('WorkOS authenticateWithCode started');
             $response = $userManagement->authenticateWithCode(
                 (string) config('services.workos.client_id'),
                 $code,
                 $request->ip(),
                 substr((string) $request->userAgent(), 0, 1024)
             );
+            Log::info('WorkOS authenticateWithCode succeeded');
         } catch (Throwable $e) {
             Log::warning('WorkOS authentication failed', ['message' => $e->getMessage()]);
 
@@ -163,6 +167,10 @@ class WorkosAuthController extends Controller
 
         WorkOS::setApiKey($apiKey);
         WorkOS::setClientId($clientId);
+        WorkosClient::setRequestClient(new TimeoutCurlRequestClient(
+            (int) config('services.workos.connect_timeout_seconds', 10),
+            (int) config('services.workos.timeout_seconds', 20)
+        ));
 
         return new UserManagement();
     }
