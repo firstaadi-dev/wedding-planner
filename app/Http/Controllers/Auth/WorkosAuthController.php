@@ -34,15 +34,15 @@ class WorkosAuthController extends Controller
     {
         $code = (string) $request->query('code', '');
         if ($code === '') {
-            return redirect()->route('login')->withErrors([
-                'auth' => 'WorkOS callback tidak memiliki authorization code.',
-            ]);
+            return redirect()->route('workos.failed', ['reason' => 'missing_code']);
         }
 
         if (!$this->isValidState($request)) {
-            return redirect()->route('login')->withErrors([
-                'auth' => 'State WorkOS tidak valid. Coba login lagi.',
+            Log::warning('WorkOS state validation failed', [
+                'incoming_state' => (string) $request->query('state', ''),
             ]);
+
+            return redirect()->route('workos.failed', ['reason' => 'invalid_state']);
         }
 
         try {
@@ -56,17 +56,13 @@ class WorkosAuthController extends Controller
         } catch (Throwable $e) {
             Log::warning('WorkOS authentication failed', ['message' => $e->getMessage()]);
 
-            return redirect()->route('login')->withErrors([
-                'auth' => 'Gagal autentikasi ke WorkOS. Coba lagi.',
-            ]);
+            return redirect()->route('workos.failed', ['reason' => 'authenticate_failed']);
         }
 
         $workosUser = $response->user ?? null;
         $email = strtolower(trim((string) ($workosUser->email ?? '')));
         if ($email === '') {
-            return redirect()->route('login')->withErrors([
-                'auth' => 'WorkOS tidak mengembalikan email user.',
-            ]);
+            return redirect()->route('workos.failed', ['reason' => 'email_missing']);
         }
 
         $user = $this->syncLocalUser($workosUser);
@@ -93,6 +89,25 @@ class WorkosAuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    public function failed(Request $request)
+    {
+        $reason = (string) $request->query('reason', 'unknown');
+
+        $messages = [
+            'missing_code' => 'Callback WorkOS tidak mengirim authorization code.',
+            'invalid_state' => 'State callback tidak cocok dengan session login.',
+            'authenticate_failed' => 'WorkOS menolak proses authenticateWithCode.',
+            'email_missing' => 'WorkOS tidak mengembalikan email user.',
+        ];
+
+        $message = $messages[$reason] ?? 'Autentikasi WorkOS gagal karena alasan yang tidak diketahui.';
+
+        return response(
+            "<h2>WorkOS Login Failed</h2><p>{$message}</p><p><a href=\"/login\">Coba login ulang</a></p>",
+            422
+        );
     }
 
     private function redirectToWorkos(Request $request, string $screenHint): RedirectResponse
@@ -132,7 +147,17 @@ class WorkosAuthController extends Controller
 
     private function workosRedirectUri(): string
     {
-        return (string) (config('services.workos.redirect_uri') ?: route('workos.callback'));
+        $configured = trim((string) config('services.workos.redirect_uri', ''));
+
+        if (
+            $configured === '' ||
+            str_contains($configured, '${') ||
+            str_contains($configured, '$APP_URL')
+        ) {
+            return route('workos.callback');
+        }
+
+        return $configured;
     }
 
     private function isValidState(Request $request): bool
@@ -145,6 +170,10 @@ class WorkosAuthController extends Controller
         $incomingState = (string) $request->query('state', '');
         if ($incomingState === '') {
             return false;
+        }
+
+        if (hash_equals($expected, $incomingState)) {
+            return true;
         }
 
         $decoded = json_decode($incomingState, true);

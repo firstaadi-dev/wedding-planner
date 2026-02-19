@@ -125,6 +125,8 @@ Project ini sekarang menggunakan WorkOS untuk login/register (hosted AuthKit).
    WORKOS_REDIRECT_URI="${APP_URL}/auth/workos/callback"
    ```
    Ganti value placeholder dengan credential WorkOS asli Anda.
+   Untuk env platform seperti Render, isi `WORKOS_REDIRECT_URI` dengan URL absolut (jangan pakai `${APP_URL}` literal), contoh:
+   `https://wedding-planner-saas.onrender.com/auth/workos/callback`
 3. Di dashboard WorkOS, pastikan Redirect URI di-set ke:
    ```text
    https://your-domain/auth/workos/callback
