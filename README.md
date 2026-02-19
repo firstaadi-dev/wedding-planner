@@ -104,3 +104,55 @@ Sudah diset default di blueprint:
 ### 5) Catatan Neon
 - Untuk proses migration/seeding, endpoint Neon **direct** lebih aman daripada `-pooler`.
 - Disarankan tetap pakai host direct di Render agar migrasi stabil.
+
+## WorkOS Auth Migration
+
+Project ini sekarang menggunakan WorkOS untuk login/register (hosted AuthKit).
+
+1. Install dependency:
+   ```bash
+   composer require workos/workos-php
+   ```
+2. Isi konfigurasi di `.env`:
+   ```bash
+   WORKOS_API_KEY=sk_test_xxxxxxxxx
+   WORKOS_CLIENT_ID=client_xxxxxxxxx
+   WORKOS_REDIRECT_URI="${APP_URL}/auth/workos/callback"
+   ```
+   Ganti value placeholder dengan credential WorkOS asli Anda.
+3. Di dashboard WorkOS, pastikan Redirect URI di-set ke:
+   ```text
+   https://your-domain/auth/workos/callback
+   ```
+4. Karena migrasi auth full dan aman untuk reset data, jalankan wipe + migrate:
+   ```bash
+   php artisan migrate:fresh
+   ```
+   Jika di lokal ini Anda pakai php84:
+   ```bash
+   /opt/homebrew/opt/php@8.5/bin/php artisan migrate:fresh
+   ```
+5. Flow auth:
+   - `GET /login` -> redirect ke WorkOS AuthKit (sign in)
+   - `GET /register` -> redirect ke WorkOS AuthKit (sign up)
+   - `GET /auth/workos/callback` -> callback login ke app
+6. Flow undangan pasangan:
+   - Owner kirim undangan dari fitur app -> backend membuat WorkOS User Invitation URL.
+   - WorkOS akan mengirim invitation email ke pasangan.
+   - Setelah pasangan accept invitation + login, callback WorkOS akan auto-attach user ke workspace yang mengundang.
+
+## Resend API (Hello World)
+
+1. Install Resend SDK (gunakan versi yang kompatibel dengan versi PHP Anda):
+   ```bash
+   composer require resend/resend-php
+   ```
+2. Set API key di `.env`:
+   ```bash
+   RESEND_API_KEY=re_xxxxxxxxx
+   ```
+   Ganti `re_xxxxxxxxx` dengan API key Resend asli Anda.
+3. Kirim test email:
+   ```bash
+   php artisan resend:send-hello firstaadip16@gmail.com
+   ```

@@ -30,4 +30,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'workos' => [
+        'api_key' => env('WORKOS_API_KEY'),
+        'client_id' => env('WORKOS_CLIENT_ID'),
+        'redirect_uri' => env('WORKOS_REDIRECT_URI'),
+    ],
+
+    'resend' => [
+        'key' => env('RESEND_API_KEY', 're_xxxxxxxxx'),
+        'api_key' => env('RESEND_API_KEY', 're_xxxxxxxxx'),
+    ],
+
 ];

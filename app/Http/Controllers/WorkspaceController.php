@@ -6,10 +6,15 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspacePaymentTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Throwable;
+use WorkOS\UserManagement;
+use WorkOS\WorkOS;
 
 class WorkspaceController extends Controller
 {
@@ -65,39 +70,81 @@ class WorkspaceController extends Controller
             return back()->withErrors(['email' => 'Email tersebut sudah menjadi anggota workspace ini.']);
         }
 
-        $token = Str::random(64);
+        try {
+            $userManagement = $this->makeUserManagement();
+        } catch (RuntimeException $e) {
+            return back()->withErrors([
+                'email' => 'Konfigurasi WorkOS belum lengkap. Isi WORKOS_API_KEY dan WORKOS_CLIENT_ID.',
+            ]);
+        }
+
+        $pendingInvitations = WorkspaceInvitation::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($pendingInvitations as $pendingInvitation) {
+            if (!$pendingInvitation->workos_invitation_id) {
+                continue;
+            }
+
+            try {
+                $userManagement->revokeInvitation($pendingInvitation->workos_invitation_id);
+            } catch (Throwable $e) {
+                Log::warning('Failed to revoke previous WorkOS invitation', [
+                    'invitation_id' => $pendingInvitation->id,
+                    'workos_invitation_id' => $pendingInvitation->workos_invitation_id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
 
         WorkspaceInvitation::query()
             ->where('workspace_id', $workspace->id)
             ->whereRaw('LOWER(email) = ?', [$email])
             ->where('status', 'pending')
-            ->update(['status' => 'revoked']);
+            ->update([
+                'status' => 'revoked',
+                'updated_at' => now(),
+            ]);
 
+        try {
+            $workosInvitation = $userManagement->sendInvitation(
+                $email,
+                null,
+                7,
+                $user->workos_user_id ?: null,
+                null
+            );
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->withErrors([
+                'email' => 'Gagal mengirim undangan WorkOS. Periksa konfigurasi WorkOS dan coba lagi.',
+            ]);
+        }
+
+        $acceptUrl = (string) ($workosInvitation->acceptInvitationUrl ?? '');
         $invitation = WorkspaceInvitation::create([
             'workspace_id' => $workspace->id,
             'invited_by_user_id' => $user->id,
             'email' => $email,
-            'token' => $token,
+            'token' => Str::random(64),
+            'workos_invitation_id' => $workosInvitation->id ?? null,
+            'workos_accept_url' => $acceptUrl !== '' ? $acceptUrl : null,
             'status' => 'pending',
-            'expires_at' => now()->addDays(7),
+            'expires_at' => $this->parseWorkosTimestamp($workosInvitation->expiresAt ?? null) ?? now()->addDays(7),
         ]);
 
-        $acceptUrl = route('workspace.invitations.accept', ['token' => $invitation->token]);
-
-        try {
-            Mail::raw(
-                "Anda diundang bergabung sebagai pasangan di workspace {$workspace->name}. Buka link berikut: {$acceptUrl}",
-                function ($message) use ($email) {
-                    $message->to($email)->subject('Undangan pasangan - Wedding Planner');
-                }
-            );
-
-            return back()->with('success', 'Undangan pasangan berhasil dikirim.');
-        } catch (\Throwable $e) {
-            report($e);
-
-            return back()->with('success', 'Undangan tersimpan. Mail gagal dikirim, gunakan link ini: ' . $acceptUrl);
+        $successMessage = 'Undangan pasangan berhasil dikirim via WorkOS.';
+        if ($acceptUrl !== '') {
+            $successMessage .= ' Link undangan: ' . $acceptUrl;
+        } else {
+            $successMessage .= ' Cek inbox pasangan untuk membuka invitation URL.';
         }
+
+        return back()->with('success', $successMessage)->with('workspace_invitation_id', $invitation->id);
     }
 
     public function acceptInvitation(Request $request, string $token)
@@ -210,6 +257,34 @@ class WorkspaceController extends Controller
         $workspaceId = (int) ($user->current_workspace_id ?? 0);
 
         return Workspace::query()->findOrFail($workspaceId);
+    }
+
+    private function makeUserManagement(): UserManagement
+    {
+        $apiKey = (string) config('services.workos.api_key', '');
+        $clientId = (string) config('services.workos.client_id', '');
+
+        if ($apiKey === '' || $clientId === '') {
+            throw new RuntimeException('WORKOS_API_KEY / WORKOS_CLIENT_ID belum diisi.');
+        }
+
+        WorkOS::setApiKey($apiKey);
+        WorkOS::setClientId($clientId);
+
+        return new UserManagement();
+    }
+
+    private function parseWorkosTimestamp($timestamp): ?Carbon
+    {
+        if (!is_string($timestamp) || trim($timestamp) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($timestamp);
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 
     private function ensureOwner(Workspace $workspace, int $userId): void

@@ -15,6 +15,8 @@ class WorkspaceInvitation extends Model
         'accepted_by_user_id',
         'email',
         'token',
+        'workos_invitation_id',
+        'workos_accept_url',
         'status',
         'expires_at',
         'accepted_at',
