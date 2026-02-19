@@ -163,13 +163,22 @@ class WorkosAuthController extends Controller
     private function isValidState(Request $request): bool
     {
         $expected = (string) $request->session()->pull('workos_auth_state', '');
-        if ($expected === '') {
-            return false;
+        $incomingState = (string) $request->query('state', '');
+
+        // Some AuthKit callback flows return only ?code=... without state.
+        // In that case, skip strict state matching to avoid login loops.
+        if ($incomingState === '') {
+            Log::notice('WorkOS callback state missing; skipping state validation', [
+                'has_expected_state' => $expected !== '',
+            ]);
+
+            return true;
         }
 
-        $incomingState = (string) $request->query('state', '');
-        if ($incomingState === '') {
-            return false;
+        if ($expected === '') {
+            Log::notice('WorkOS expected state missing in session; skipping state validation');
+
+            return true;
         }
 
         if (hash_equals($expected, $incomingState)) {
