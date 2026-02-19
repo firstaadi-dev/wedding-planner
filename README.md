@@ -99,7 +99,12 @@ Sudah diset default di blueprint:
 - Saat container start, script `scripts/render-entrypoint.sh` akan:
   - clear cache Laravel
   - jalankan `php artisan migrate --force` (jika `RUN_MIGRATIONS=true`)
+  - bind Apache ke env `PORT` dari Render
   - start Apache
+
+Jika startup sering timeout saat migrate, bisa atur:
+- `RUN_MIGRATIONS=false` (jalankan migrate manual/terpisah)
+- `MIGRATION_TIMEOUT_SECONDS=60` (default 60 detik)
 
 ### 5) Catatan Neon
 - Untuk proses migration/seeding, endpoint Neon **direct** lebih aman daripada `-pooler`.

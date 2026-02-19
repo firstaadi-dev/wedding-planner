@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: wedding-planner
+    name: wedding-planner-saas
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
