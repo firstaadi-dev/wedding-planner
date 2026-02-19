@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateGiftsTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *
@@ -13,6 +16,10 @@ class CreateGiftsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('gifts')) {
+            return;
+        }
+
         Schema::create('gifts', function (Blueprint $table) {
             $table->id();
             $table->string('name');

@@ -10,8 +10,18 @@ class SseController extends Controller
     public function stream(Request $request)
     {
         $clientId = $request->query('client_id', '');
+        $workspaceId = (int) $request->query('workspace_id', 0);
 
-        return response()->stream(function () use ($clientId) {
+        if ($workspaceId <= 0 && app()->bound('currentWorkspace')) {
+            $workspace = app('currentWorkspace');
+            $workspaceId = (int) ($workspace->id ?? 0);
+        }
+
+        if ($workspaceId <= 0) {
+            abort(403, 'Workspace tidak valid untuk real-time stream.');
+        }
+
+        return response()->stream(function () use ($clientId, $workspaceId) {
             set_time_limit(0);
 
             while (ob_get_level() > 0) {
@@ -34,8 +44,12 @@ class SseController extends Controller
 
                 if ($result !== false) {
                     $payload = json_decode($result['payload'], true);
+                    $payloadWorkspaceId = (int) ($payload['workspace_id'] ?? ($payload['data']['workspace_id'] ?? 0));
 
-                    if ($payload && ($payload['client_id'] ?? '') !== $clientId) {
+                    if ($payload
+                        && ($payload['client_id'] ?? '') !== $clientId
+                        && $payloadWorkspaceId === $workspaceId
+                    ) {
                         $eventId++;
                         echo "id: {$eventId}\n";
                         echo "event: table_change\n";

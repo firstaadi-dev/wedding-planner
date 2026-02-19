@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 class AddSortOrderToGuestsTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *

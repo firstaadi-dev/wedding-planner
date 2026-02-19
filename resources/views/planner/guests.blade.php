@@ -4,12 +4,11 @@
 @section('subtitle', 'For Our Special Event')
 
 @section('content')
-<ul class="nav planner-nav mb-3" id="guest-subtabs">
-    <li class="nav-item"><button class="nav-link active" type="button" data-guest-tab="lamaran">Lamaran</button></li>
-    <li class="nav-item"><button class="nav-link" type="button" data-guest-tab="resepsi">Resepsi</button></li>
-</ul>
+@php
+    $activeEventType = $currentWorkspace->active_event_type ?? 'lamaran';
+@endphp
 
-<div data-guest-panel="lamaran">
+<div data-guest-panel="lamaran" @if($activeEventType === 'resepsi') style="display:none;" @endif>
     <div class="row g-3 mb-4">
         <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Undangan</div><div class="metric-value" id="guest-total-lamaran">{{ $stats['lamaran']['totalGuests'] }}</div></div></div>
         <div class="col-md-3"><div class="metric-card"><div class="metric-label">Hadir</div><div class="metric-value" id="guest-attending-lamaran">{{ $stats['lamaran']['attendingGuests'] }}</div></div></div>
@@ -142,7 +141,7 @@
     </div>
 </div>
 
-<div data-guest-panel="resepsi" style="display:none;">
+<div data-guest-panel="resepsi" @if($activeEventType !== 'resepsi') style="display:none;" @endif>
     <div class="row g-3 mb-4">
         <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Undangan</div><div class="metric-value" id="guest-total-resepsi">{{ $stats['resepsi']['totalGuests'] }}</div></div></div>
         <div class="col-md-3"><div class="metric-card"><div class="metric-label">Hadir</div><div class="metric-value" id="guest-attending-resepsi">{{ $stats['resepsi']['attendingGuests'] }}</div></div></div>
@@ -305,9 +304,6 @@
         }
 
         function switchGuestTab(tab) {
-            document.querySelectorAll('[data-guest-tab]').forEach(function (btn) {
-                btn.classList.toggle('active', btn.dataset.guestTab === tab);
-            });
             document.querySelectorAll('[data-guest-panel]').forEach(function (panel) {
                 panel.style.display = panel.dataset.guestPanel === tab ? '' : 'none';
             });
@@ -474,12 +470,6 @@
             });
         }
 
-        document.querySelectorAll('[data-guest-tab]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                switchGuestTab(btn.dataset.guestTab);
-            });
-        });
-
         document.addEventListener('sheet:changed', function (event) {
             const table = event.detail && event.detail.table;
             if (table && table.dataset.sheetName === 'guests') {
@@ -495,7 +485,8 @@
             }
         });
 
-        switchGuestTab('lamaran');
+        var initialTab = (window.__activeEventType === 'resepsi') ? 'resepsi' : 'lamaran';
+        switchGuestTab(initialTab);
         ensureGuestRowDecorations();
         initGuestDragDrop();
         refreshGuestDraggableRows();

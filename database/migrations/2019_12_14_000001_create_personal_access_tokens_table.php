@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class CreatePersonalAccessTokensTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *
@@ -13,6 +16,10 @@ class CreatePersonalAccessTokensTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('personal_access_tokens')) {
+            return;
+        }
+
         Schema::create('personal_access_tokens', function (Blueprint $table) {
             $table->id();
             $table->morphs('tokenable');

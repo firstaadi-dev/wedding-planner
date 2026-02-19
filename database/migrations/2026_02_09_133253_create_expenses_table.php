@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateExpensesTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *
@@ -13,6 +16,10 @@ class CreateExpensesTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('expenses')) {
+            return;
+        }
+
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
             $table->string('name');

@@ -189,6 +189,62 @@
             box-shadow: 0 2px 12px rgba(184,149,106,0.3);
         }
 
+        .workspace-toolbar {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface);
+            box-shadow: 0 4px 18px rgba(44,36,32,0.05);
+        }
+
+        .workspace-toolbar .toolbar-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 0.1rem;
+        }
+
+        .workspace-meta {
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .mode-switch {
+            display: inline-flex;
+            gap: 0.4rem;
+            padding: 0.25rem;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: var(--surface);
+        }
+
+        .mode-switch .btn {
+            border-radius: 999px;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            font-weight: 600;
+        }
+
+        .member-chip {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            color: #63584d;
+            background: #f8f3ed;
+        }
+
+        .btn-accent {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            border-color: #a78358;
+            background: #a78358;
+            color: #fff;
+        }
+
         .metric-card {
             border: 1px solid var(--line);
             border-radius: 14px;
@@ -742,10 +798,75 @@
         <div class="header-ornament"><span class="ornament-diamond"></span></div>
     </div>
 
+    @php
+        $memberCount = isset($workspaceMembers) ? $workspaceMembers->count() : 0;
+        $activeEventType = $currentWorkspace->active_event_type ?? 'lamaran';
+        $activeEventTypeLabel = $activeEventType === 'resepsi' ? 'Wedding' : 'Lamaran';
+        $giftLabel = $activeEventType === 'resepsi' ? 'Mahar' : 'Seserahan';
+    @endphp
+
+    <div class="workspace-toolbar mb-4">
+        <div class="p-3 p-md-4">
+            <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
+                <div>
+                    <div class="toolbar-title">{{ $currentWorkspace->name ?? 'Workspace' }}</div>
+                    <div class="workspace-meta">
+                        Mode global: <strong>{{ $activeEventTypeLabel }}</strong>
+                        | Plan: <strong>{{ strtoupper($currentWorkspace->plan_code ?? 'free') }}</strong>
+                        ({{ strtoupper($currentWorkspace->plan_status ?? 'active') }})
+                    </div>
+                    @if(isset($workspaceIsPro) && !$workspaceIsPro)
+                        <div class="workspace-meta">
+                            Free limit: Undangan {{ $workspaceLimits['guest_limit'] ?? 10 }},
+                            {{ $giftLabel }} {{ $workspaceLimits['gift_limit'] ?? 5 }},
+                            To-do {{ $workspaceLimits['task_limit'] ?? 3 }},
+                            Vendor {{ $workspaceLimits['vendor_limit'] ?? 3 }}
+                        </div>
+                    @endif
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <form method="POST" action="{{ route('workspace.mode.switch') }}" data-allow-navigation="1" class="mode-switch mb-0">
+                        @csrf
+                        <button type="submit" name="event_type" value="lamaran" class="btn btn-sm {{ $activeEventType === 'lamaran' ? 'btn-accent' : 'btn-outline-secondary' }}">Lamaran</button>
+                        <button type="submit" name="event_type" value="resepsi" class="btn btn-sm {{ $activeEventType === 'resepsi' ? 'btn-accent' : 'btn-outline-secondary' }}">Wedding</button>
+                    </form>
+
+                    @if(($currentWorkspaceRole ?? 'member') === 'owner' && isset($workspaceIsPro) && !$workspaceIsPro)
+                        <form method="POST" action="{{ route('billing.sandbox.upgrade') }}" data-allow-navigation="1" class="mb-0">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-success">Upgrade Sandbox Pro (Rp100.000)</button>
+                        </form>
+                    @endif
+
+                    <form method="POST" action="{{ route('logout') }}" data-allow-navigation="1" class="mb-0">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mt-3">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach(($workspaceMembers ?? collect()) as $member)
+                        <span class="member-chip">{{ $member->name }} ({{ $member->email }})</span>
+                    @endforeach
+                </div>
+
+                @if(($currentWorkspaceRole ?? 'member') === 'owner' && $memberCount < 2)
+                    <form method="POST" action="{{ route('workspace.invitations.store') }}" data-allow-navigation="1" class="d-flex gap-2">
+                        @csrf
+                        <input type="email" name="email" class="form-control form-control-sm" placeholder="Email pasangan" required>
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Undang Pasangan</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </div>
+
     <ul class="nav planner-main-nav mb-4">
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('guests.*')) active @endif" href="{{ route('guests.index') }}">Undangan</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('tasks.*')) active @endif" href="{{ route('tasks.index') }}">To-do</a></li>
-        <li class="nav-item"><a class="nav-link @if(request()->routeIs('gifts.*')) active @endif" href="{{ route('gifts.index') }}">Seserahan</a></li>
+        <li class="nav-item"><a class="nav-link @if(request()->routeIs('gifts.*')) active @endif" href="{{ route('gifts.index') }}">{{ $giftLabel }}</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('vendors.*')) active @endif" href="{{ route('vendors.index') }}">Vendor</a></li>
         <li class="nav-item"><a class="nav-link @if(request()->routeIs('expenses.*')) active @endif" href="{{ route('expenses.index') }}">Budget & Expense</a></li>
     </ul>
@@ -761,7 +882,7 @@
         </div>
     @endif
 
-    <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.
+    <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, klik baris (di area non-input) untuk pilih, Ctrl/Cmd+klik untuk multi pilih, Shift+klik untuk rentang, lalu klik Hapus Terpilih.
         <button type="button" class="bulk-delete-btn" id="bulk-delete-selected" hidden>Hapus Terpilih (0)</button>
     </div>
 
@@ -774,7 +895,11 @@
     const hint = document.querySelector('.autosave-hint');
     const bulkDeleteButton = document.getElementById('bulk-delete-selected');
     var clientId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    var currentWorkspaceId = Number(@json($currentWorkspace->id ?? 0));
+    var currentEventType = @json($currentWorkspace->active_event_type ?? 'lamaran');
     window.__clientId = clientId;
+    window.__workspaceId = currentWorkspaceId;
+    window.__activeEventType = currentEventType;
     const tableConfigs = new WeakMap();
     const selectedRows = new Set();
     let lastSelectedRow = null;
@@ -1386,10 +1511,6 @@
                         setTimeout(function () {
                             focusNextRowCell(table, row, input);
                         }, 0);
-                    }
-                    if (event.key === 'Delete' && event.shiftKey && row.dataset.newRow !== '1' && row.dataset.id) {
-                        event.preventDefault();
-                        removeRow(table, row, config).catch(console.error);
                     }
                 });
 
@@ -2084,7 +2205,7 @@
                 eventSource.close();
             }
 
-            eventSource = new EventSource('/events?client_id=' + encodeURIComponent(clientId));
+            eventSource = new EventSource('/events?client_id=' + encodeURIComponent(clientId) + '&workspace_id=' + encodeURIComponent(String(currentWorkspaceId)));
 
             eventSource.addEventListener('table_change', function (event) {
                 reconnectAttempts = 0;
@@ -2094,6 +2215,10 @@
                     var dbTable = payload.table;
                     var recordId = payload.record_id;
                     var data = payload.data;
+
+                    if (dbTable !== 'guests' && data && data.event_type && data.event_type !== currentEventType) {
+                        return;
+                    }
 
                     if (dbTable === 'guests' && op === 'UPDATE' && data && data.sort_order !== undefined) {
                         var existingRows = findRowsForDbTableRecord('guests', recordId);

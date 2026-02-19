@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class AddGroupNameToGiftsTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *

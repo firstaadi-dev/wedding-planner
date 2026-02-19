@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateEngagementTasksTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *
@@ -13,6 +16,10 @@ class CreateEngagementTasksTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('engagement_tasks')) {
+            return;
+        }
+
         Schema::create('engagement_tasks', function (Blueprint $table) {
             $table->id();
             $table->string('title');

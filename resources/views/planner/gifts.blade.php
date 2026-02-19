@@ -1,16 +1,22 @@
 @extends('layouts.planner')
 
-@section('title', 'List Seserahan')
-@section('subtitle', 'Pantau item seserahan, harga, pembayaran, link, dan progres')
+@php
+    $activeEventType = $currentWorkspace->active_event_type ?? 'lamaran';
+    $giftLabel = $activeEventType === 'resepsi' ? 'Mahar' : 'Seserahan';
+    $giftLabelLower = strtolower($giftLabel);
+@endphp
+
+@section('title', 'List ' . $giftLabel)
+@section('subtitle', 'Pantau item ' . $giftLabelLower . ', harga, pembayaran, link, dan progres')
 
 @section('content')
 <div class="row g-3 mb-4">
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal Seserahan</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal {{ $giftLabel }}</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
     <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Final Semua Kategori</div><div class="metric-value" id="gift-total-final-all">Rp {{ number_format($totalGiftFinal, 0, ',', '.') }}</div></div></div>
 </div>
 
 <div class="planner-card">
-    <div class="card-header pt-3 px-3 fw-semibold">Daftar Seserahan</div>
+    <div class="card-header pt-3 px-3 fw-semibold">Daftar {{ $giftLabel }}</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
             <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="gifts" data-reorder-url="{{ route('gifts.reorder') }}" data-reorder-groups-url="{{ route('gifts.reorder-groups') }}" data-enter-next-field="name" data-create-url="{{ route('gifts.store') }}" data-bulk-create-url="{{ route('gifts.bulk-store') }}" data-bulk-delete-url="{{ route('gifts.bulk-destroy') }}" data-update-url="/gifts/__ID__" data-delete-url="/gifts/__ID__" data-required="name,status">

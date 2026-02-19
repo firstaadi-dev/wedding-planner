@@ -7,6 +7,8 @@ use App\Models\Expense;
 use App\Models\Gift;
 use App\Models\Guest;
 use App\Models\Vendor;
+use App\Models\Workspace;
+use App\Services\WorkspacePlanService;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -183,6 +185,7 @@ class EngagementPlannerController extends Controller
         $this->setClientId($request);
 
         $validated = $request->validate($this->guestRules());
+        $this->enforceCreationLimit('guest_limit', 1, 'undangan');
 
         $validated['sort_order'] = $this->nextGuestSortOrder($validated['event_type'], $validated['side']);
 
@@ -294,6 +297,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
         $rows = $this->validateBulkRows($request, $this->guestRules());
+        $this->enforceCreationLimit('guest_limit', count($rows), 'undangan');
         $records = [];
 
         DB::transaction(function () use (&$records, $rows) {
@@ -334,6 +338,7 @@ class EngagementPlannerController extends Controller
         $this->setClientId($request);
 
         $validated = $request->validate($this->taskRules());
+        $this->enforceCreationLimit('task_limit', 1, 'to-do');
 
         $task = DB::transaction(function () use ($validated) {
             $payload = $this->prepareTaskPayload($validated);
@@ -376,6 +381,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
         $rows = $this->validateBulkRows($request, $this->taskRules());
+        $this->enforceCreationLimit('task_limit', count($rows), 'to-do');
         $records = [];
 
         DB::transaction(function () use (&$records, $rows) {
@@ -412,6 +418,9 @@ class EngagementPlannerController extends Controller
         $this->setClientId($request);
 
         $validated = $this->normalizeVendorPayload($request->validate($this->vendorRules()));
+        if ($this->findVendorByName($validated['vendor_name'] ?? null) === null) {
+            $this->enforceCreationLimit('vendor_limit', 1, 'vendor');
+        }
         $vendor = DB::transaction(function () use ($validated) {
             return $this->upsertVendorByName($validated);
         });
@@ -463,11 +472,30 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
         $rows = $this->validateBulkRows($request, $this->vendorRules());
+        $normalizedRows = [];
+        $newVendorKeys = [];
+        foreach ($rows as $row) {
+            $payload = $this->normalizeVendorPayload($row);
+            $normalizedRows[] = $payload;
+            $vendorName = $payload['vendor_name'] ?? null;
+            if ($vendorName === null || $vendorName === '') {
+                continue;
+            }
+
+            $key = strtolower($vendorName);
+            if (isset($newVendorKeys[$key])) {
+                continue;
+            }
+
+            if ($this->findVendorByName($vendorName) === null) {
+                $newVendorKeys[$key] = true;
+            }
+        }
+        $this->enforceCreationLimit('vendor_limit', count($newVendorKeys), 'vendor');
         $records = [];
 
-        DB::transaction(function () use (&$records, $rows) {
-            foreach ($rows as $validated) {
-                $payload = $this->normalizeVendorPayload($validated);
+        DB::transaction(function () use (&$records, $normalizedRows) {
+            foreach ($normalizedRows as $payload) {
                 $records[] = $this->upsertVendorByName($payload);
             }
         });
@@ -522,6 +550,7 @@ class EngagementPlannerController extends Controller
     public function storeGift(Request $request)
     {
         $validated = $request->validate($this->giftRules());
+        $this->enforceCreationLimit('gift_limit', 1, 'seserahan');
         $validated = $this->normalizeGiftPayload($validated);
 
         $gift = DB::transaction(function () use ($validated, $request) {
@@ -653,6 +682,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
         $rows = $this->validateBulkRows($request, $this->giftRules());
+        $this->enforceCreationLimit('gift_limit', count($rows), 'seserahan');
         $records = [];
 
         DB::transaction(function () use (&$records, $rows) {
@@ -898,6 +928,8 @@ class EngagementPlannerController extends Controller
 
             return $existing->fresh();
         }
+
+        $this->enforceCreationLimit('vendor_limit', 1, 'vendor');
 
         try {
             return Vendor::create($payload);
@@ -1318,6 +1350,82 @@ class EngagementPlannerController extends Controller
         $normalized = trim((string) $value);
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    private function currentWorkspace(): Workspace
+    {
+        if (app()->bound('currentWorkspace')) {
+            $workspace = app('currentWorkspace');
+            if ($workspace instanceof Workspace) {
+                return $workspace;
+            }
+        }
+
+        $user = auth()->user();
+        $workspaceId = (int) ($user->current_workspace_id ?? 0);
+
+        return Workspace::query()->findOrFail($workspaceId);
+    }
+
+    private function enforceCreationLimit(string $limitKey, int $incomingCount, string $resourceLabel): void
+    {
+        $incoming = max($incomingCount, 0);
+        if ($incoming <= 0) {
+            return;
+        }
+
+        $workspace = $this->currentWorkspace();
+        $planService = app(WorkspacePlanService::class);
+        $limit = $planService->getLimitFor($workspace, $limitKey);
+        if ($limit === null) {
+            return;
+        }
+
+        $current = $this->countRecordsForLimit($limitKey);
+        if (($current + $incoming) <= $limit) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $this->limitErrorField($limitKey) => sprintf(
+                'Limit paket Free untuk %s adalah %d item. Upgrade ke Pro untuk unlimited.',
+                $resourceLabel,
+                $limit
+            ),
+        ]);
+    }
+
+    private function countRecordsForLimit(string $limitKey): int
+    {
+        if ($limitKey === 'guest_limit') {
+            return (int) Guest::query()->count();
+        }
+
+        if ($limitKey === 'task_limit') {
+            return (int) EngagementTask::query()->withoutGlobalScope('event_type')->count();
+        }
+
+        if ($limitKey === 'gift_limit') {
+            return (int) Gift::query()->withoutGlobalScope('event_type')->count();
+        }
+
+        if ($limitKey === 'vendor_limit') {
+            return (int) Vendor::query()->withoutGlobalScope('event_type')->count();
+        }
+
+        return 0;
+    }
+
+    private function limitErrorField(string $limitKey): string
+    {
+        $map = [
+            'guest_limit' => 'name',
+            'task_limit' => 'title',
+            'gift_limit' => 'name',
+            'vendor_limit' => 'vendor_name',
+        ];
+
+        return $map[$limitKey] ?? 'message';
     }
 
     private function respondSuccess(Request $request, string $message, array $payload = [])

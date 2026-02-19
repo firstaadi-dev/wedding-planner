@@ -2,14 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\EventTypeScoped;
+use App\Models\Concerns\WorkspaceScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class EngagementTask extends Model
 {
-    use HasFactory;
+    use HasFactory, WorkspaceScoped, EventTypeScoped;
 
     protected $fillable = [
+        'workspace_id',
+        'event_type',
         'title',
         'vendor',
         'price',

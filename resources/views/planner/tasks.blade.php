@@ -32,6 +32,7 @@
                     <th>Due Date</th>
                     <th>Finish Date</th>
                     <th>Notes</th>
+                    <th class="row-actions">Aksi</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -54,6 +55,7 @@
                         <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="due_date" value="{{ optional($task->due_date)->format('Y-m-d') }}"></td>
                         <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="finish_date" value="{{ optional($task->finish_date)->format('Y-m-d') }}"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="notes" value="{{ $task->notes }}"></td>
+                        <td class="row-actions"></td>
                     </tr>
                 @endforeach
 
@@ -75,6 +77,7 @@
                     <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="due_date"></td>
                     <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="finish_date"></td>
                     <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Notes"></td>
+                    <td class="row-actions"></td>
                 </tr>
                 </tbody>
 
@@ -97,6 +100,7 @@
                         <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="due_date"></td>
                         <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="finish_date"></td>
                         <td><input class="form-control form-control-sm sheet-cell" data-field="notes" placeholder="Notes"></td>
+                        <td class="row-actions"></td>
                     </tr>
                 </template>
             </table>

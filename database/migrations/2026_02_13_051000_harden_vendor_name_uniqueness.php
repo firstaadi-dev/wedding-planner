@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\DB;
 
 class HardenVendorNameUniqueness extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *

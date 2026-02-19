@@ -5,8 +5,15 @@ use Illuminate\Support\Facades\DB;
 
 class CreateTableChangeNotifyTriggers extends Migration
 {
+    public $withinTransaction = false;
+
+
     public function up()
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::unprepared("
             CREATE OR REPLACE FUNCTION notify_table_change() RETURNS trigger AS \$\$
             DECLARE
@@ -48,6 +55,7 @@ class CreateTableChangeNotifyTriggers extends Migration
 
         foreach ($tables as $table) {
             DB::unprepared("
+                DROP TRIGGER IF EXISTS {$table}_notify_trigger ON {$table};
                 CREATE TRIGGER {$table}_notify_trigger
                     AFTER INSERT OR UPDATE OR DELETE ON {$table}
                     FOR EACH ROW EXECUTE FUNCTION notify_table_change();
@@ -57,6 +65,10 @@ class CreateTableChangeNotifyTriggers extends Migration
 
     public function down()
     {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         $tables = ['guests', 'engagement_tasks', 'gifts', 'expenses'];
 
         foreach ($tables as $table) {

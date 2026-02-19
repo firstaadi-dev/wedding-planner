@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateVendorsTable extends Migration
 {
+    public $withinTransaction = false;
+
+
     /**
      * Run the migrations.
      *
@@ -13,6 +16,10 @@ class CreateVendorsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('vendors')) {
+            return;
+        }
+
         Schema::create('vendors', function (Blueprint $table) {
             $table->id();
             $table->string('vendor_name');
