@@ -7,25 +7,18 @@ use App\Models\Expense;
 use App\Models\Gift;
 use App\Models\Guest;
 use App\Models\Vendor;
-use App\Services\PlannerExcelExportService;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EngagementPlannerController extends Controller
 {
     public function index()
     {
         return redirect()->route('guests.index');
-    }
-
-    public function exportExcel(PlannerExcelExportService $plannerExcelExportService): StreamedResponse
-    {
-        return $plannerExcelExportService->download();
     }
 
     public function guestsPage(): View
@@ -100,9 +93,9 @@ class EngagementPlannerController extends Controller
     public function vendorsPage(): View
     {
         $vendors = Vendor::query()
-            ->orderByRaw("status = 'done'")
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
+            ->orderBy('group_sort_order')
+            ->orderByRaw("COALESCE(group_name, '')")
+            ->orderBy('id')
             ->get();
 
         return view('planner.vendors', [
@@ -430,7 +423,7 @@ class EngagementPlannerController extends Controller
     {
         $this->setClientId($request);
 
-        $validated = $this->normalizeVendorPayload($request->validate($this->vendorRules()));
+        $validated = $this->normalizeVendorPayload($request->validate($this->vendorRules()), $vendor);
         $duplicate = $this->findVendorByName($validated['vendor_name'] ?? null, (int) $vendor->id);
         if ($duplicate !== null) {
             $message = 'Nama vendor sudah digunakan vendor lain.';
@@ -493,6 +486,37 @@ class EngagementPlannerController extends Controller
         $deletedCount = Vendor::query()->whereIn('id', $ids)->delete();
 
         return $this->respondSuccess($request, 'Vendor terpilih dihapus.', ['deleted_count' => $deletedCount]);
+    }
+
+    public function reorderVendorGroups(Request $request)
+    {
+        $validated = $request->validate([
+            'ordered_groups' => ['required', 'array'],
+            'ordered_groups.*' => ['nullable', 'string', 'max:150'],
+        ]);
+
+        DB::transaction(function () use ($validated, $request) {
+            $this->setClientId($request);
+            $order = 1;
+
+            foreach ($validated['ordered_groups'] as $groupNameRaw) {
+                $groupName = $this->normalizeVendorGroupName($groupNameRaw);
+
+                $query = Vendor::query();
+                if ($groupName === null) {
+                    $query->where(function ($q) {
+                        $q->whereNull('group_name')->orWhere('group_name', '');
+                    });
+                } else {
+                    $query->where('group_name', $groupName);
+                }
+
+                $query->update(['group_sort_order' => $order]);
+                $order++;
+            }
+        });
+
+        return response()->json(['message' => 'Urutan group vendor diperbarui.']);
     }
 
     public function storeGift(Request $request)
@@ -783,6 +807,8 @@ class EngagementPlannerController extends Controller
     {
         return [
             'vendor_name' => ['required', 'string', 'max:255'],
+            'group_name' => ['nullable', 'string', 'max:150'],
+            'group_sort_order' => ['nullable', 'integer', 'min:0'],
             'contact_name' => ['nullable', 'string', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:80'],
             'contact_email' => ['nullable', 'string', 'max:255'],
@@ -916,9 +942,23 @@ class EngagementPlannerController extends Controller
     private function mergeVendorPayload(Vendor $existing, array $incoming): array
     {
         $incomingStatus = $incoming['status'] ?? null;
+        $incomingGroupName = $incoming['group_name'] ?? null;
+        $incomingGroupSortOrder = isset($incoming['group_sort_order']) ? (int) $incoming['group_sort_order'] : 0;
+
+        $groupName = $incomingGroupName ?? $this->normalizeVendorGroupName($existing->group_name);
+        $groupSortOrder = (int) ($existing->group_sort_order ?? 0);
+        if ($incomingGroupName !== null) {
+            $groupSortOrder = $incomingGroupSortOrder > 0
+                ? $incomingGroupSortOrder
+                : $this->resolveVendorGroupSortOrder($incomingGroupName, (int) $existing->id);
+        } elseif ($groupSortOrder <= 0) {
+            $groupSortOrder = $this->resolveVendorGroupSortOrder($groupName, (int) $existing->id);
+        }
 
         return [
             'vendor_name' => $incoming['vendor_name'] ?? $existing->vendor_name,
+            'group_name' => $groupName,
+            'group_sort_order' => $groupSortOrder,
             'contact_name' => $incoming['contact_name'] ?? $existing->contact_name,
             'contact_number' => $incoming['contact_number'] ?? $existing->contact_number,
             'contact_email' => $incoming['contact_email'] ?? $existing->contact_email,
@@ -944,9 +984,11 @@ class EngagementPlannerController extends Controller
         return $incomingRank >= $currentRank ? $incomingStatus : $currentStatus;
     }
 
-    private function normalizeVendorPayload(array $payload): array
+    private function normalizeVendorPayload(array $payload, ?Vendor $vendor = null): array
     {
         $payload['vendor_name'] = $this->normalizeVendorName($payload['vendor_name'] ?? null) ?? '';
+        $payload['group_name'] = $this->normalizeVendorGroupName($payload['group_name'] ?? null);
+        $incomingGroupSortOrder = isset($payload['group_sort_order']) ? (int) $payload['group_sort_order'] : 0;
         $payload['contact_name'] = $this->normalizeVendorText($payload['contact_name'] ?? null);
         $payload['contact_number'] = $this->normalizeVendorPhoneDigits($payload['contact_number'] ?? null);
         $payload['contact_email'] = $this->normalizeVendorText($payload['contact_email'] ?? null);
@@ -956,11 +998,37 @@ class EngagementPlannerController extends Controller
         $payload['website'] = $this->normalizeVendorText($payload['website'] ?? null);
         $payload['reference'] = $this->normalizeVendorText($payload['reference'] ?? null);
         $payload['status'] = $payload['status'] ?? 'not_started';
+        if ($vendor === null) {
+            if ($incomingGroupSortOrder <= 0) {
+                $payload['group_sort_order'] = $this->resolveVendorGroupSortOrder($payload['group_name']);
+            } else {
+                $payload['group_sort_order'] = $incomingGroupSortOrder;
+            }
+
+            return $payload;
+        }
+
+        $groupChanged = $payload['group_name'] !== $this->normalizeVendorGroupName($vendor->group_name);
+        if ($groupChanged) {
+            $payload['group_sort_order'] = $this->resolveVendorGroupSortOrder($payload['group_name'], (int) $vendor->id);
+        } elseif ($incomingGroupSortOrder <= 0) {
+            $payload['group_sort_order'] = (int) $vendor->group_sort_order;
+            if ($payload['group_sort_order'] <= 0) {
+                $payload['group_sort_order'] = $this->resolveVendorGroupSortOrder($payload['group_name'], (int) $vendor->id);
+            }
+        } else {
+            $payload['group_sort_order'] = $incomingGroupSortOrder;
+        }
 
         return $payload;
     }
 
     private function normalizeVendorName($value): ?string
+    {
+        return $this->normalizeVendorText($value);
+    }
+
+    private function normalizeVendorGroupName($value): ?string
     {
         return $this->normalizeVendorText($value);
     }
@@ -1181,6 +1249,13 @@ class EngagementPlannerController extends Controller
         return $max + 1;
     }
 
+    private function nextVendorGroupSortOrder(): int
+    {
+        $max = (int) Vendor::max('group_sort_order');
+
+        return $max + 1;
+    }
+
     private function nextGiftGroupSortOrder(): int
     {
         $max = (int) Gift::max('group_sort_order');
@@ -1209,6 +1284,29 @@ class EngagementPlannerController extends Controller
         }
 
         return $this->nextGiftGroupSortOrder();
+    }
+
+    private function resolveVendorGroupSortOrder(?string $groupName, ?int $ignoreVendorId = null): int
+    {
+        $query = Vendor::query();
+        if ($ignoreVendorId !== null) {
+            $query->where('id', '<>', $ignoreVendorId);
+        }
+
+        if ($groupName === null) {
+            $query->where(function ($q) {
+                $q->whereNull('group_name')->orWhere('group_name', '');
+            });
+        } else {
+            $query->where('group_name', $groupName);
+        }
+
+        $existing = $query->min('group_sort_order');
+        if ($existing !== null && (int) $existing > 0) {
+            return (int) $existing;
+        }
+
+        return $this->nextVendorGroupSortOrder();
     }
 
     private function normalizeGiftGroupName($value): ?string

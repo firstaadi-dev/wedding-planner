@@ -19,7 +19,6 @@ Route::get('/', [EngagementPlannerController::class, 'index'])->name('engagement
 Route::get('/healthz', function () {
     return response('ok', 200);
 })->name('healthz');
-Route::get('/export/excel', [EngagementPlannerController::class, 'exportExcel'])->name('planner.export-excel');
 
 Route::get('/guests', [EngagementPlannerController::class, 'guestsPage'])->name('guests.index');
 Route::post('/guests', [EngagementPlannerController::class, 'storeGuest'])->name('guests.store');
@@ -40,6 +39,7 @@ Route::get('/vendors', [EngagementPlannerController::class, 'vendorsPage'])->nam
 Route::post('/vendors', [EngagementPlannerController::class, 'storeVendor'])->name('vendors.store');
 Route::post('/vendors/bulk', [EngagementPlannerController::class, 'storeVendorsBulk'])->name('vendors.bulk-store');
 Route::post('/vendors/bulk-delete', [EngagementPlannerController::class, 'destroyVendorsBulk'])->name('vendors.bulk-destroy');
+Route::post('/vendors/reorder-groups', [EngagementPlannerController::class, 'reorderVendorGroups'])->name('vendors.reorder-groups');
 Route::put('/vendors/{vendor}', [EngagementPlannerController::class, 'updateVendor'])->name('vendors.update');
 Route::delete('/vendors/{vendor}', [EngagementPlannerController::class, 'destroyVendor'])->name('vendors.destroy');
 

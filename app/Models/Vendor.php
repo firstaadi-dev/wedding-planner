@@ -11,11 +11,17 @@ class Vendor extends Model
 
     protected $fillable = [
         'vendor_name',
+        'group_name',
+        'group_sort_order',
         'contact_name',
         'contact_number',
         'contact_email',
         'website',
         'reference',
         'status',
+    ];
+
+    protected $casts = [
+        'group_sort_order' => 'integer',
     ];
 }

@@ -223,6 +223,9 @@
         .table-responsive {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface);
         }
 
         .table-clean {
@@ -257,6 +260,10 @@
             white-space: normal;
             overflow-wrap: anywhere;
             word-break: break-word;
+        }
+
+        .table-responsive .table-clean {
+            margin-bottom: 0;
         }
 
         .table-clean > :not(caption) > * > * {
@@ -461,29 +468,17 @@
             font-size: 0.8rem;
             color: var(--muted);
             text-align: center;
-        }
-
-        .export-excel-btn {
-            display: inline-block;
-            margin-left: 10px;
-            border: 1px solid #8fb6d8;
-            color: #25527a;
-            background: #f1f8ff;
-            border-radius: 8px;
-            font-size: 0.74rem;
-            font-weight: 700;
-            padding: 4px 10px;
-            line-height: 1.2;
-            text-decoration: none;
-        }
-
-        .export-excel-btn:hover {
-            background: #e7f2ff;
-            color: #1f476a;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            line-height: 1.35;
+            padding: 0 6px;
         }
 
         .bulk-delete-btn {
-            margin-left: 10px;
+            margin-left: 0;
             border: 1px solid #d8a6a6;
             color: #8b2f2f;
             background: #fff5f5;
@@ -540,18 +535,24 @@
             }
 
             .planner-main-nav {
-                flex-wrap: wrap;
+                flex-wrap: nowrap;
                 border-radius: 16px;
                 max-width: none;
+                justify-content: flex-start;
+                overflow-x: auto;
+                white-space: nowrap;
+                scrollbar-width: thin;
+                padding: 0.35rem;
+                gap: 0.35rem;
             }
 
             .planner-main-nav .nav-item {
-                flex: 1 1 calc(50% - 0.25rem);
+                flex: 0 0 auto;
             }
 
             .planner-main-nav .nav-link {
                 border-radius: 12px;
-                padding: 0.6rem 0.5rem;
+                padding: 0.58rem 0.8rem;
                 font-size: 0.84rem;
             }
 
@@ -559,7 +560,31 @@
                 font-size: 1.15rem;
             }
 
-            .table-clean { min-width: 700px; }
+            .table-clean { min-width: 680px; }
+
+            .table-responsive.mobile-scroll-ready:not(.mobile-stack-ready) .table-clean thead th:first-child,
+            .table-responsive.mobile-scroll-ready:not(.mobile-stack-ready) .table-clean tbody tr td:first-child:not([colspan]) {
+                position: sticky;
+                left: 0;
+                z-index: 3;
+                background: var(--surface);
+            }
+
+            .table-responsive.mobile-scroll-ready:not(.mobile-stack-ready) .table-clean tbody tr:nth-child(even):not(.inline-add-row) td:first-child:not([colspan]) {
+                background: var(--cream);
+            }
+
+            .table-responsive.mobile-scroll-ready:not(.mobile-stack-ready) .table-clean .row-actions {
+                position: sticky;
+                right: 0;
+                z-index: 4;
+                background: var(--surface);
+                box-shadow: -8px 0 8px -8px rgba(44, 36, 32, 0.25);
+            }
+
+            .table-responsive.mobile-scroll-ready:not(.mobile-stack-ready) .table-clean tbody tr:nth-child(even):not(.inline-add-row) .row-actions {
+                background: var(--cream);
+            }
         }
 
         @media (max-width: 575.98px) {
@@ -578,6 +603,11 @@
 
             .autosave-hint {
                 font-size: 0.74rem;
+                text-align: left;
+                justify-content: flex-start;
+                gap: 6px;
+                padding-left: 2px;
+                padding-right: 2px;
             }
 
             .table-clean th {
@@ -592,8 +622,9 @@
 
             .form-control.form-control-sm,
             .form-select.form-select-sm {
-                font-size: 0.78rem;
-                padding: 0.28rem 0.4rem;
+                font-size: 0.93rem;
+                padding: 0.42rem 0.48rem;
+                min-height: 34px;
             }
 
             .row-actions {
@@ -601,11 +632,11 @@
             }
 
             .row-menu summary {
-                width: 30px;
-                height: 28px;
+                width: 34px;
+                height: 32px;
             }
 
-            .table-clean { min-width: 640px; }
+            .table-clean { min-width: 620px; }
 
             .planner-main-nav {
                 border-radius: 14px;
@@ -613,11 +644,92 @@
 
             .planner-main-nav .nav-link {
                 font-size: 0.8rem;
-                padding: 0.55rem 0.4rem;
+                padding: 0.56rem 0.72rem;
             }
 
             .header-ornament {
                 margin-top: 6px;
+            }
+
+            .table-responsive.mobile-stack-ready {
+                overflow: visible;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean {
+                min-width: 0;
+                border-collapse: separate;
+                border-spacing: 0 10px;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean thead {
+                display: none;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] {
+                display: block;
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                background: var(--surface);
+                box-shadow: 0 3px 12px rgba(44, 36, 32, 0.06);
+                overflow: hidden;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row].inline-add-row {
+                border-style: dashed;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] td {
+                display: block;
+                border: 0;
+                border-top: 1px solid #efe7dc;
+                padding: 6px 10px;
+                background: transparent !important;
+                width: 100%;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] td:first-child {
+                border-top: 0;
+                padding-top: 10px;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] td::before {
+                content: attr(data-label);
+                display: block;
+                font-size: 0.68rem;
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin-bottom: 5px;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] td.row-actions {
+                text-align: right;
+                padding-bottom: 10px;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] td.row-actions::before {
+                text-align: left;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr.row-selected td {
+                background: #e8f1ff !important;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr.row-swipe-armed td {
+                background: #fde4e4 !important;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] .name-cell {
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] .drag-handle {
+                margin-top: 8px;
             }
         }
     </style>
@@ -650,8 +762,6 @@
     @endif
 
     <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.
-        {{-- Export button hidden sementara karena investigasi stabilitas exporter. --}}
-        {{-- <a class="export-excel-btn" href="{{ route('planner.export-excel') }}">Export Excel</a> --}}
         <button type="button" class="bulk-delete-btn" id="bulk-delete-selected" hidden>Hapus Terpilih (0)</button>
     </div>
 
@@ -992,7 +1102,56 @@
         return !event.target.closest('input, select, textarea, button, a, details, summary, [data-open-link], [data-delete-row]');
     }
 
+    function syncTableCellLabels(table) {
+        if (!table) return;
+        var headers = Array.from(table.querySelectorAll('thead th')).map(function (th) {
+            return (th.textContent || '').trim();
+        });
+        if (!headers.length) return;
+
+        table.querySelectorAll('tbody tr').forEach(function (row) {
+            var columnIndex = 0;
+            Array.from(row.children).forEach(function (cell) {
+                if (!cell || cell.tagName !== 'TD') return;
+                var span = parseInt(cell.getAttribute('colspan') || '1', 10);
+                if (!Number.isFinite(span) || span < 1) span = 1;
+
+                if (span === 1) {
+                    var label = headers[columnIndex] || '';
+                    if (label) {
+                        cell.setAttribute('data-label', label);
+                    } else {
+                        cell.removeAttribute('data-label');
+                    }
+                } else {
+                    cell.removeAttribute('data-label');
+                }
+
+                columnIndex += span;
+            });
+        });
+    }
+
+    function syncResponsiveTableMode(table) {
+        if (!table) return;
+        var wrapper = table.parentElement;
+        if (!wrapper || !wrapper.classList || !wrapper.classList.contains('table-responsive')) return;
+
+        wrapper.classList.add('mobile-scroll-ready');
+        var headerCount = table.querySelectorAll('thead th').length;
+        var shouldStack = table.hasAttribute('data-sheet-table') && headerCount > 0 && headerCount <= 5;
+        wrapper.classList.toggle('mobile-stack-ready', shouldStack);
+    }
+
+    function refreshResponsiveTables() {
+        document.querySelectorAll('.table-responsive > table.table-clean').forEach(function (table) {
+            syncTableCellLabels(table);
+            syncResponsiveTableMode(table);
+        });
+    }
+
     function emitSheetChanged(table) {
+        refreshResponsiveTables();
         preserveScrollPosition(function () {
             document.dispatchEvent(new CustomEvent('sheet:changed', {
                 detail: { table: table }
@@ -1288,6 +1447,7 @@
         }
         bindDeleteHandler(table, row, config);
         bindSwipeDelete(table, row, config);
+        refreshResponsiveTables();
     }
 
     function parseClipboardMatrix(raw) {
@@ -1523,6 +1683,7 @@
             registerRowHandlers(table, row, config);
         });
     });
+    refreshResponsiveTables();
 
     if (bulkDeleteButton) {
         bulkDeleteButton.addEventListener('click', async function () {
@@ -1991,8 +2152,41 @@
     var nav = document.querySelector('.planner-main-nav');
     if (!nav) return;
 
+    function centerActiveNavLink(container) {
+        if (!container) return;
+        var active = container.querySelector('.nav-link.active');
+        if (!active || typeof active.scrollIntoView !== 'function') return;
+        try {
+            active.scrollIntoView({
+                block: 'nearest',
+                inline: 'center',
+                behavior: 'auto'
+            });
+        } catch (e) {
+            // Ignore browsers that don't fully support scrollIntoView options.
+        }
+    }
+
+    document.querySelectorAll('.planner-main-nav, .planner-nav').forEach(function (container) {
+        centerActiveNavLink(container);
+    });
+
+    document.addEventListener('click', function (event) {
+        var link = event.target && event.target.closest ? event.target.closest('.planner-main-nav .nav-link, .planner-nav .nav-link') : null;
+        if (!link) return;
+        var container = link.closest('.planner-main-nav, .planner-nav');
+        if (!container) return;
+        setTimeout(function () {
+            centerActiveNavLink(container);
+        }, 0);
+    });
+
     var hideTimer = null;
     var stickyThreshold = Math.max((nav.offsetTop || 0) - 10, 0);
+
+    function desktopAutoHideEnabled() {
+        return window.matchMedia('(min-width: 992px)').matches;
+    }
 
     function isStickyActive() {
         return window.scrollY > stickyThreshold;
@@ -2009,6 +2203,12 @@
     }
 
     function scheduleHide() {
+        if (!desktopAutoHideEnabled()) {
+            clearHideTimer();
+            showNav();
+            return;
+        }
+
         clearHideTimer();
         if (!isStickyActive()) {
             showNav();
@@ -2030,6 +2230,7 @@
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', function () {
         stickyThreshold = Math.max((nav.offsetTop || 0) - 10, 0);
+        centerActiveNavLink(nav);
         handleScroll();
     });
 
