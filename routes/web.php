@@ -20,9 +20,10 @@ Route::get('/healthz', function () {
 Route::middleware('guest')->group(function () {
     Route::get('/register', [WorkosAuthController::class, 'register'])->name('register');
     Route::get('/login', [WorkosAuthController::class, 'login'])->name('login');
-    Route::get('/auth/workos/callback', [WorkosAuthController::class, 'callback'])->name('workos.callback');
-    Route::get('/auth/workos/failed', [WorkosAuthController::class, 'failed'])->name('workos.failed');
 });
+
+Route::get('/auth/workos/callback', [WorkosAuthController::class, 'callback'])->name('workos.callback');
+Route::get('/auth/workos/failed', [WorkosAuthController::class, 'failed'])->name('workos.failed');
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [WorkosAuthController::class, 'logout'])->name('logout');

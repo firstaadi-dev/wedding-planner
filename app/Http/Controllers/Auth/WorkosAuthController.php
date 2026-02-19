@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -69,33 +70,43 @@ class WorkosAuthController extends Controller
             return redirect()->route('workos.failed', ['reason' => 'authenticate_failed']);
         }
 
-        $workosUser = $response->user ?? null;
-        $email = strtolower(trim((string) ($workosUser->email ?? '')));
-        if ($email === '') {
-            return redirect()->route('workos.failed', ['reason' => 'email_missing']);
+        try {
+            $this->assertLocalAuthSchemaReady();
+
+            $workosUser = $response->user ?? null;
+            $email = strtolower(trim((string) ($workosUser->email ?? '')));
+            if ($email === '') {
+                return redirect()->route('workos.failed', ['reason' => 'email_missing']);
+            }
+
+            $user = $this->syncLocalUser($workosUser);
+
+            Auth::login($user, true);
+            $request->session()->regenerate();
+            $request->session()->put('auth_provider', 'workos');
+            $request->session()->save();
+
+            Log::warning('WorkOS callback local session created', [
+                'user_id' => $user->id,
+                'session_id' => $request->session()->getId(),
+                'auth_check' => Auth::check(),
+            ]);
+
+            $joinedFromInvitation = $this->acceptPendingWorkspaceInvitation($user);
+            if ($joinedFromInvitation) {
+                return redirect()
+                    ->route('engagement.index')
+                    ->with('success', 'Berhasil menerima undangan pasangan dan bergabung ke workspace.');
+            }
+
+            return redirect()->route('engagement.index');
+        } catch (Throwable $e) {
+            Log::error('WorkOS local auth sync failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('workos.failed', ['reason' => 'local_sync_failed']);
         }
-
-        $user = $this->syncLocalUser($workosUser);
-
-        Auth::login($user, true);
-        $request->session()->regenerate();
-        $request->session()->put('auth_provider', 'workos');
-        $request->session()->save();
-
-        Log::warning('WorkOS callback local session created', [
-            'user_id' => $user->id,
-            'session_id' => $request->session()->getId(),
-            'auth_check' => Auth::check(),
-        ]);
-
-        $joinedFromInvitation = $this->acceptPendingWorkspaceInvitation($user);
-        if ($joinedFromInvitation) {
-            return redirect()
-                ->route('engagement.index')
-                ->with('success', 'Berhasil menerima undangan pasangan dan bergabung ke workspace.');
-        }
-
-        return redirect()->route('engagement.index');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -117,6 +128,7 @@ class WorkosAuthController extends Controller
             'invalid_state' => 'State callback tidak cocok dengan session login.',
             'authenticate_failed' => 'WorkOS menolak proses authenticateWithCode.',
             'email_missing' => 'WorkOS tidak mengembalikan email user.',
+            'local_sync_failed' => 'Login WorkOS sukses, tetapi sinkronisasi user/workspace di aplikasi gagal. Cek migrasi database dan log aplikasi.',
         ];
 
         $message = $messages[$reason] ?? 'Autentikasi WorkOS gagal karena alasan yang tidak diketahui.';
@@ -353,5 +365,35 @@ class WorkosAuthController extends Controller
 
             return true;
         });
+    }
+
+    private function assertLocalAuthSchemaReady(): void
+    {
+        $missing = [];
+
+        if (!Schema::hasTable('users')) {
+            $missing[] = 'users(table)';
+        } else {
+            if (!Schema::hasColumn('users', 'workos_user_id')) {
+                $missing[] = 'users.workos_user_id';
+            }
+            if (!Schema::hasColumn('users', 'current_workspace_id')) {
+                $missing[] = 'users.current_workspace_id';
+            }
+        }
+
+        if (!Schema::hasTable('workspaces')) {
+            $missing[] = 'workspaces(table)';
+        }
+        if (!Schema::hasTable('workspace_user')) {
+            $missing[] = 'workspace_user(table)';
+        }
+        if (!Schema::hasTable('workspace_invitations')) {
+            $missing[] = 'workspace_invitations(table)';
+        }
+
+        if ($missing !== []) {
+            throw new RuntimeException('Schema belum siap untuk WorkOS auth: ' . implode(', ', $missing));
+        }
     }
 }
