@@ -123,6 +123,9 @@ Project ini sekarang menggunakan WorkOS untuk login/register (hosted AuthKit).
    WORKOS_API_KEY=sk_test_xxxxxxxxx
    WORKOS_CLIENT_ID=client_xxxxxxxxx
    WORKOS_REDIRECT_URI="${APP_URL}/auth/workos/callback"
+   SESSION_DRIVER=cookie
+   SESSION_SECURE_COOKIE=true
+   SESSION_SAME_SITE=none
    ```
    Ganti value placeholder dengan credential WorkOS asli Anda.
    Untuk env platform seperti Render, isi `WORKOS_REDIRECT_URI` dengan URL absolut (jangan pakai `${APP_URL}` literal), contoh:

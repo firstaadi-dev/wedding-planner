@@ -33,6 +33,12 @@ class WorkosAuthController extends Controller
     public function callback(Request $request): RedirectResponse
     {
         $code = (string) $request->query('code', '');
+        Log::info('WorkOS callback endpoint hit', [
+            'has_code' => $code !== '',
+            'has_state' => $request->query->has('state'),
+            'query_keys' => array_keys($request->query()),
+        ]);
+
         if ($code === '') {
             return redirect()->route('workos.failed', ['reason' => 'missing_code']);
         }
@@ -70,6 +76,13 @@ class WorkosAuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
         $request->session()->put('auth_provider', 'workos');
+        $request->session()->save();
+
+        Log::warning('WorkOS callback local session created', [
+            'user_id' => $user->id,
+            'session_id' => $request->session()->getId(),
+            'auth_check' => Auth::check(),
+        ]);
 
         $joinedFromInvitation = $this->acceptPendingWorkspaceInvitation($user);
         if ($joinedFromInvitation) {
@@ -116,8 +129,9 @@ class WorkosAuthController extends Controller
         $request->session()->put('workos_auth_state', $stateToken);
 
         $userManagement = $this->makeUserManagement();
+        $redirectUri = $this->workosRedirectUri();
         $authorizationUrl = $userManagement->getAuthorizationUrl(
-            $this->workosRedirectUri(),
+            $redirectUri,
             ['csrf' => $stateToken],
             UserManagement::AUTHORIZATION_PROVIDER_AUTHKIT,
             null,
@@ -127,7 +141,15 @@ class WorkosAuthController extends Controller
             $screenHint
         );
 
-        return redirect()->away($authorizationUrl);
+        Log::info('WorkOS authorize redirect generated', [
+            'screen_hint' => $screenHint,
+            'redirect_uri' => $redirectUri,
+            'has_state' => true,
+        ]);
+
+        return redirect()
+            ->away($authorizationUrl)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     private function makeUserManagement(): UserManagement
