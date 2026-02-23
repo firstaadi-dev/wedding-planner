@@ -295,10 +295,6 @@
             box-shadow: inset 0 0 0 1px #9cb9e7;
         }
 
-        .table-clean tbody tr.row-swipe-armed td {
-            background: #fde4e4 !important;
-        }
-
         .sheet-cell {
             width: 100%;
             min-width: 0;
@@ -717,10 +713,6 @@
 
             .table-responsive.mobile-stack-ready .table-clean tbody tr.row-selected td {
                 background: #e8f1ff !important;
-            }
-
-            .table-responsive.mobile-stack-ready .table-clean tbody tr.row-swipe-armed td {
-                background: #fde4e4 !important;
             }
 
             .table-responsive.mobile-stack-ready .table-clean tbody tr[data-row] .name-cell {
@@ -1240,80 +1232,6 @@
         });
     }
 
-    function bindSwipeDelete(table, row, config) {
-        if (row.dataset.swipeBound === '1') return;
-        row.dataset.swipeBound = '1';
-
-        let startX = 0;
-        let startY = 0;
-        let currentX = 0;
-        let tracking = false;
-        let swiping = false;
-
-        function resetSwipeState() {
-            row.style.transform = '';
-            row.classList.remove('row-swipe-armed');
-            currentX = 0;
-            swiping = false;
-        }
-
-        row.addEventListener('touchstart', function (event) {
-            if (row.dataset.newRow === '1' || !row.dataset.id) return;
-            if (event.touches.length !== 1) return;
-            if (event.target.closest('.row-menu')) return;
-
-            startX = event.touches[0].clientX;
-            startY = event.touches[0].clientY;
-            currentX = 0;
-            tracking = true;
-            swiping = false;
-            row.classList.remove('row-swipe-armed');
-        }, { passive: true });
-
-        row.addEventListener('touchmove', function (event) {
-            if (!tracking || event.touches.length !== 1) return;
-
-            const dx = event.touches[0].clientX - startX;
-            const dy = event.touches[0].clientY - startY;
-
-            if (!swiping) {
-                if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) {
-                    tracking = false;
-                    resetSwipeState();
-                    return;
-                }
-                if (dx > 14 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-                    swiping = true;
-                } else {
-                    return;
-                }
-            }
-
-            event.preventDefault();
-            currentX = Math.max(0, dx);
-            const limited = Math.min(120, currentX);
-            row.style.transform = 'translateX(' + limited + 'px)';
-            row.classList.toggle('row-swipe-armed', limited >= 84);
-        }, { passive: false });
-
-        row.addEventListener('touchend', function () {
-            if (!tracking) return;
-            tracking = false;
-
-            const shouldDelete = swiping && currentX >= 84;
-            resetSwipeState();
-
-            if (shouldDelete) {
-                removeRow(table, row, config).catch(console.error);
-            }
-        });
-
-        row.addEventListener('touchcancel', function () {
-            tracking = false;
-            resetSwipeState();
-        });
-    }
-
     function autoGrowTextarea(textarea) {
         if (!textarea || textarea.tagName !== 'TEXTAREA') return;
         textarea.style.height = 'auto';
@@ -1446,7 +1364,6 @@
             mountDeleteMenu(row);
         }
         bindDeleteHandler(table, row, config);
-        bindSwipeDelete(table, row, config);
         refreshResponsiveTables();
     }
 
