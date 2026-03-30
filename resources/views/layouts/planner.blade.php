@@ -753,6 +753,13 @@
         </div>
     @endif
 
+    <div class="mb-3">
+        <ul class="nav planner-nav" id="global-event-toggle" style="display:inline-flex;">
+            <li class="nav-item"><button class="nav-link active" type="button" data-event-type="lamaran">Lamaran</button></li>
+            <li class="nav-item"><button class="nav-link" type="button" data-event-type="resepsi">Resepsi</button></li>
+        </ul>
+    </div>
+
     <div class="autosave-hint mb-3"><span class="saving-dot"></span>Autosave aktif: Enter untuk lanjut ke row berikutnya, pindah field untuk simpan, Shift+Delete untuk hapus row.
         <button type="button" class="bulk-delete-btn" id="bulk-delete-selected" hidden>Hapus Terpilih (0)</button>
     </div>
@@ -2152,6 +2159,29 @@
     });
 
     handleScroll();
+})();
+</script>
+<script>
+(function () {
+    var STORAGE_KEY = 'planner:event-type';
+    function getEventType() {
+        try { return localStorage.getItem(STORAGE_KEY) || 'lamaran'; } catch (e) { return 'lamaran'; }
+    }
+    window.__getEventType = getEventType;
+
+    var btns = document.querySelectorAll('#global-event-toggle [data-event-type]');
+    var current = getEventType();
+    btns.forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.eventType === current);
+        btn.addEventListener('click', function () {
+            var type = btn.dataset.eventType;
+            try { localStorage.setItem(STORAGE_KEY, type); } catch (e) {}
+            btns.forEach(function (b) {
+                b.classList.toggle('active', b.dataset.eventType === type);
+            });
+            document.dispatchEvent(new CustomEvent('event-type-changed', { detail: { eventType: type } }));
+        });
+    });
 })();
 </script>
 @stack('page-scripts')

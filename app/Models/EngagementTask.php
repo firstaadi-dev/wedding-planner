@@ -10,6 +10,7 @@ class EngagementTask extends Model
     use HasFactory;
 
     protected $fillable = [
+        'event_type',
         'title',
         'vendor',
         'price',

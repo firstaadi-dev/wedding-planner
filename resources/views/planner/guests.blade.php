@@ -4,11 +4,6 @@
 @section('subtitle', 'For Our Special Event')
 
 @section('content')
-<ul class="nav planner-nav mb-3" id="guest-subtabs">
-    <li class="nav-item"><button class="nav-link active" type="button" data-guest-tab="lamaran">Lamaran</button></li>
-    <li class="nav-item"><button class="nav-link" type="button" data-guest-tab="resepsi">Resepsi</button></li>
-</ul>
-
 <div data-guest-panel="lamaran">
     <div class="row g-3 mb-4">
         <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Undangan</div><div class="metric-value" id="guest-total-lamaran">{{ $stats['lamaran']['totalGuests'] }}</div></div></div>
@@ -474,10 +469,10 @@
             });
         }
 
-        document.querySelectorAll('[data-guest-tab]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                switchGuestTab(btn.dataset.guestTab);
-            });
+        document.addEventListener('event-type-changed', function (event) {
+            if (event.detail && event.detail.eventType) {
+                switchGuestTab(event.detail.eventType);
+            }
         });
 
         document.addEventListener('sheet:changed', function (event) {
@@ -495,7 +490,7 @@
             }
         });
 
-        switchGuestTab('lamaran');
+        switchGuestTab(window.__getEventType ? window.__getEventType() : 'lamaran');
         ensureGuestRowDecorations();
         initGuestDragDrop();
         refreshGuestDraggableRows();

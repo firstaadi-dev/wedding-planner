@@ -10,6 +10,7 @@ class Vendor extends Model
     use HasFactory;
 
     protected $fillable = [
+        'event_type',
         'vendor_name',
         'group_name',
         'group_sort_order',

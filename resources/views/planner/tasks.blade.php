@@ -4,13 +4,17 @@
 @section('subtitle', 'Task engagement dengan tracking vendor, biaya, timeline, dan progres')
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Open (Not Started/In Progress)</div><div class="metric-value" id="task-open-count">{{ $stats['openTasks'] }}</div></div></div>
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Done</div><div class="metric-value" id="task-done-count">{{ $stats['doneTasks'] }}</div></div></div>
+<div class="row g-3 mb-4" data-stats-panel="lamaran">
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Open (Not Started/In Progress)</div><div class="metric-value" id="task-open-count-lamaran">{{ $stats['lamaran']['openTasks'] }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Done</div><div class="metric-value" id="task-done-count-lamaran">{{ $stats['lamaran']['doneTasks'] }}</div></div></div>
+</div>
+<div class="row g-3 mb-4" data-stats-panel="resepsi" style="display:none;">
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Open (Not Started/In Progress)</div><div class="metric-value" id="task-open-count-resepsi">{{ $stats['resepsi']['openTasks'] }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Done</div><div class="metric-value" id="task-done-count-resepsi">{{ $stats['resepsi']['doneTasks'] }}</div></div></div>
 </div>
 
 <div class="planner-card">
-    <div class="card-header pt-3 px-3 fw-semibold">To-do Engagement</div>
+    <div class="card-header pt-3 px-3 fw-semibold" id="task-card-title">To-do Lamaran</div>
     <div class="card-body pt-2">
         <datalist id="task-vendor-options">
             @foreach($vendorNames as $vendorName)
@@ -35,9 +39,36 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach($tasks as $task)
-                    <tr data-row data-id="{{ $task->id }}">
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="title" value="{{ $task->title }}"></td>
+                @foreach($lamaranTasks as $task)
+                    <tr data-row data-id="{{ $task->id }}" data-event-type="lamaran">
+                        <td>
+                            <input type="hidden" class="sheet-cell" data-field="event_type" value="lamaran">
+                            <input class="form-control form-control-sm sheet-cell" data-field="title" value="{{ $task->title }}">
+                        </td>
+                        <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" value="{{ $task->vendor }}"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="{{ $task->price ?? 0 }}"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $task->paid_amount ?? 0 }}"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-dp currency-idr" data-field="down_payment" data-currency-idr="1" value="{{ $task->down_payment ?? 0 }}"></td>
+                        <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-remaining currency-idr" data-field="remaining_amount" data-currency-idr="1" value="{{ $task->remaining_amount ?? 0 }}" readonly></td>
+                        <td>
+                            <select class="form-select form-select-sm sheet-cell" data-field="task_status">
+                                <option value="not_started" {{ $task->task_status === 'not_started' ? 'selected' : '' }}>Not Started</option>
+                                <option value="in_progress" {{ $task->task_status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="done" {{ $task->task_status === 'done' ? 'selected' : '' }}>Done :)</option>
+                            </select>
+                        </td>
+                        <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="start_date" value="{{ optional($task->start_date)->format('Y-m-d') }}"></td>
+                        <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="due_date" value="{{ optional($task->due_date)->format('Y-m-d') }}"></td>
+                        <td><input type="date" class="form-control form-control-sm sheet-cell" data-field="finish_date" value="{{ optional($task->finish_date)->format('Y-m-d') }}"></td>
+                        <td><input class="form-control form-control-sm sheet-cell" data-field="notes" value="{{ $task->notes }}"></td>
+                    </tr>
+                @endforeach
+                @foreach($resepsiTasks as $task)
+                    <tr data-row data-id="{{ $task->id }}" data-event-type="resepsi" style="display:none;">
+                        <td>
+                            <input type="hidden" class="sheet-cell" data-field="event_type" value="resepsi">
+                            <input class="form-control form-control-sm sheet-cell" data-field="title" value="{{ $task->title }}">
+                        </td>
                         <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" value="{{ $task->vendor }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="{{ $task->price ?? 0 }}"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="{{ $task->paid_amount ?? 0 }}"></td>
@@ -58,7 +89,10 @@
                 @endforeach
 
                 <tr data-row data-new-row="1" class="inline-add-row">
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task"></td>
+                    <td>
+                        <input type="hidden" class="sheet-cell task-event-type-input" data-field="event_type" value="lamaran">
+                        <input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task">
+                    </td>
                     <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" placeholder="Vendor"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                     <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
@@ -80,7 +114,10 @@
 
                 <template data-new-row-template>
                     <tr data-row data-new-row="1" class="inline-add-row">
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task"></td>
+                        <td>
+                            <input type="hidden" class="sheet-cell task-event-type-input" data-field="event_type" value="lamaran">
+                            <input class="form-control form-control-sm sheet-cell" data-field="title" placeholder="Task">
+                        </td>
                         <td><input class="form-control form-control-sm sheet-cell task-vendor-input" data-field="vendor" list="task-vendor-options" placeholder="Vendor"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-price currency-idr" data-field="price" data-currency-idr="1" value="Rp0"></td>
                         <td><input type="text" inputmode="numeric" class="form-control form-control-sm sheet-cell task-paid currency-idr" data-field="paid_amount" data-currency-idr="1" value="Rp0"></td>
@@ -108,6 +145,41 @@
 @push('page-scripts')
 <script>
     (function () {
+        var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+
+        var eventTypeLabels = { lamaran: 'Lamaran', resepsi: 'Resepsi' };
+        var cardTitle = document.getElementById('task-card-title');
+
+        function applyEventType(type) {
+            currentEventType = type;
+
+            // Show/hide stats panels
+            document.querySelectorAll('[data-stats-panel]').forEach(function (el) {
+                el.style.display = el.dataset.statsPanel === type ? '' : 'none';
+            });
+
+            // Show/hide data rows
+            document.querySelectorAll('table[data-create-url="{{ route('tasks.store') }}"] tbody tr[data-row][data-id]').forEach(function (row) {
+                row.style.display = (row.dataset.eventType === type) ? '' : 'none';
+            });
+
+            // Update new row event_type inputs
+            document.querySelectorAll('.task-event-type-input').forEach(function (input) {
+                input.value = type;
+            });
+
+            // Update card title
+            if (cardTitle) cardTitle.textContent = 'To-do ' + (eventTypeLabels[type] || type);
+
+            recalcTaskStats();
+        }
+
+        document.addEventListener('event-type-changed', function (event) {
+            if (event.detail && event.detail.eventType) {
+                applyEventType(event.detail.eventType);
+            }
+        });
+
         const vendorDataList = document.getElementById('task-vendor-options');
         const vendorOptionSet = new Set();
 
@@ -249,6 +321,7 @@
             var doneCount = 0;
 
             rows.forEach(function (row) {
+                if (row.dataset.eventType !== currentEventType) return;
                 var statusInput = row.querySelector('[data-field="task_status"]');
                 if (!statusInput) return;
 
@@ -259,8 +332,8 @@
                 }
             });
 
-            var openEl = document.getElementById('task-open-count');
-            var doneEl = document.getElementById('task-done-count');
+            var openEl = document.getElementById('task-open-count-' + currentEventType);
+            var doneEl = document.getElementById('task-done-count-' + currentEventType);
             if (openEl) openEl.textContent = String(openCount);
             if (doneEl) doneEl.textContent = String(doneCount);
         }
@@ -268,6 +341,14 @@
         document.addEventListener('sheet:changed', function (event) {
             const table = event.detail && event.detail.table;
             if (table && table.dataset.createUrl === '{{ route('tasks.store') }}') {
+                // Apply event_type to newly added rows
+                table.querySelectorAll('tbody tr[data-row][data-id]').forEach(function (row) {
+                    if (!row.dataset.eventType) {
+                        var etInput = row.querySelector('[data-field="event_type"]');
+                        row.dataset.eventType = etInput ? etInput.value : currentEventType;
+                    }
+                    row.style.display = (row.dataset.eventType === currentEventType) ? '' : 'none';
+                });
                 bindTaskRows();
                 recalcTaskStats();
             }
@@ -281,8 +362,8 @@
             }
         });
 
+        applyEventType(currentEventType);
         bindTaskRows();
-        recalcTaskStats();
     })();
 </script>
 @endpush

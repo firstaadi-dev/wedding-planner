@@ -4,14 +4,19 @@
 @section('subtitle', 'Track kontak, reference, dan progres vendor')
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Vendor</div><div class="metric-value" id="vendor-total-count">{{ $stats['totalVendors'] }}</div></div></div>
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Open (Need Contact/In Progress)</div><div class="metric-value" id="vendor-active-count">{{ $stats['activeVendors'] }}</div></div></div>
-    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Booked / Done</div><div class="metric-value" id="vendor-done-count">{{ $stats['doneVendors'] }}</div></div></div>
+<div class="row g-3 mb-4" data-stats-panel="lamaran">
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Vendor</div><div class="metric-value" id="vendor-total-count-lamaran">{{ $stats['lamaran']['totalVendors'] }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Open (Need Contact/In Progress)</div><div class="metric-value" id="vendor-active-count-lamaran">{{ $stats['lamaran']['activeVendors'] }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Booked / Done</div><div class="metric-value" id="vendor-done-count-lamaran">{{ $stats['lamaran']['doneVendors'] }}</div></div></div>
+</div>
+<div class="row g-3 mb-4" data-stats-panel="resepsi" style="display:none;">
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Total Vendor</div><div class="metric-value" id="vendor-total-count-resepsi">{{ $stats['resepsi']['totalVendors'] }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Open (Need Contact/In Progress)</div><div class="metric-value" id="vendor-active-count-resepsi">{{ $stats['resepsi']['activeVendors'] }}</div></div></div>
+    <div class="col-md-4"><div class="metric-card"><div class="metric-label">Booked / Done</div><div class="metric-value" id="vendor-done-count-resepsi">{{ $stats['resepsi']['doneVendors'] }}</div></div></div>
 </div>
 
 <div class="planner-card">
-    <div class="card-header pt-3 px-3 fw-semibold">Vendor Tracker</div>
+    <div class="card-header pt-3 px-3 fw-semibold" id="vendor-card-title">Vendor Tracker - Lamaran</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
             <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="vendors" data-reorder-groups-url="{{ route('vendors.reorder-groups') }}" data-enter-next-field="vendor_name" data-create-url="{{ route('vendors.store') }}" data-bulk-create-url="{{ route('vendors.bulk-store') }}" data-bulk-delete-url="{{ route('vendors.bulk-destroy') }}" data-update-url="/vendors/__ID__" data-delete-url="/vendors/__ID__" data-required="vendor_name,status">
@@ -70,8 +75,9 @@
                             $groupIndex++;
                         @endphp
                     @endif
-                    <tr data-row data-id="{{ $vendor->id }}">
+                    <tr data-row data-id="{{ $vendor->id }}" data-event-type="{{ $vendor->event_type ?? 'lamaran' }}">
                         <td>
+                            <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $vendor->event_type ?? 'lamaran' }}">
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="{{ $vendor->group_sort_order }}">
                             <input class="form-control form-control-sm sheet-cell" data-field="vendor_name" value="{{ $vendor->vendor_name }}">
                         </td>
@@ -101,6 +107,7 @@
 
                 <tr data-row data-new-row="1" class="inline-add-row">
                     <td>
+                        <input type="hidden" class="sheet-cell vendor-event-type-input" data-field="event_type" value="lamaran">
                         <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
                         <input class="form-control form-control-sm sheet-cell" data-field="vendor_name" placeholder="Vendor Name">
                     </td>
@@ -124,6 +131,7 @@
                 <template data-new-row-template>
                     <tr data-row data-new-row="1" class="inline-add-row">
                         <td>
+                            <input type="hidden" class="sheet-cell vendor-event-type-input" data-field="event_type" value="lamaran">
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
                             <input class="form-control form-control-sm sheet-cell" data-field="vendor_name" placeholder="Vendor Name">
                         </td>
@@ -152,6 +160,45 @@
 @push('page-scripts')
 <script>
     (function () {
+        var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+        var eventTypeLabels = { lamaran: 'Lamaran', resepsi: 'Resepsi' };
+        var cardTitle = document.getElementById('vendor-card-title');
+
+        function applyVendorEventType(type) {
+            currentEventType = type;
+
+            // Show/hide stats panels
+            document.querySelectorAll('[data-stats-panel]').forEach(function (el) {
+                el.style.display = el.dataset.statsPanel === type ? '' : 'none';
+            });
+
+            // Show/hide data rows
+            var table = document.querySelector('table[data-sheet-name="vendors"]');
+            if (table) {
+                table.querySelectorAll('tbody tr[data-row][data-id]').forEach(function (row) {
+                    row.style.display = (row.dataset.eventType === type) ? '' : 'none';
+                });
+                regroupVendorRows(table);
+                recalcVendorGroupTotals(table);
+            }
+
+            // Update new row event_type inputs
+            document.querySelectorAll('.vendor-event-type-input').forEach(function (input) {
+                input.value = type;
+            });
+
+            // Update card title
+            if (cardTitle) cardTitle.textContent = 'Vendor Tracker - ' + (eventTypeLabels[type] || type);
+
+            recalcVendorStats();
+        }
+
+        document.addEventListener('event-type-changed', function (event) {
+            if (event.detail && event.detail.eventType) {
+                applyVendorEventType(event.detail.eventType);
+            }
+        });
+
         var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         var clientIdValue = (window.__clientId || '');
 
@@ -182,6 +229,7 @@
             var doneCount = 0;
 
             rows.forEach(function (row) {
+                if (row.dataset.eventType !== currentEventType) return;
                 totalCount += 1;
                 var statusInput = row.querySelector('[data-field="status"]');
                 var status = statusInput ? statusInput.value : 'not_started';
@@ -192,9 +240,9 @@
                 }
             });
 
-            var totalEl = document.getElementById('vendor-total-count');
-            var activeEl = document.getElementById('vendor-active-count');
-            var doneEl = document.getElementById('vendor-done-count');
+            var totalEl = document.getElementById('vendor-total-count-' + currentEventType);
+            var activeEl = document.getElementById('vendor-active-count-' + currentEventType);
+            var doneEl = document.getElementById('vendor-done-count-' + currentEventType);
             if (totalEl) totalEl.textContent = String(totalCount);
             if (activeEl) activeEl.textContent = String(activeCount);
             if (doneEl) doneEl.textContent = String(doneCount);
@@ -337,7 +385,9 @@
             clearVendorGroupVisualRows(tbody);
 
             var addRow = tbody.querySelector('tr[data-new-row="1"]');
-            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]')).filter(function (r) {
+                return r.style.display !== 'none';
+            });
             if (!rows.length) return;
 
             syncGroupSortFromGroupNames(table);
@@ -525,7 +575,9 @@
             var tbody = table.querySelector('tbody');
             if (!tbody) return;
 
-            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]')).filter(function (r) {
+                return r.style.display !== 'none';
+            });
             var groupCountMap = getGroupCountMap(rows);
 
             tbody.querySelectorAll('tr.vendor-group-separator').forEach(function (separator) {
@@ -541,6 +593,14 @@
         document.addEventListener('sheet:changed', function (event) {
             var table = event.detail && event.detail.table;
             if (table && table.dataset.createUrl === "{{ route('vendors.store') }}") {
+                // Apply event_type to newly added rows
+                table.querySelectorAll('tbody tr[data-row][data-id]').forEach(function (row) {
+                    if (!row.dataset.eventType) {
+                        var etInput = row.querySelector('[data-field="event_type"]');
+                        row.dataset.eventType = etInput ? etInput.value : currentEventType;
+                    }
+                    row.style.display = (row.dataset.eventType === currentEventType) ? '' : 'none';
+                });
                 bindVendorRows();
                 regroupVendorRows(table);
                 recalcVendorGroupTotals(table);
@@ -558,11 +618,7 @@
 
         bindVendorRows();
         initVendorGroupReorderControls();
-        document.querySelectorAll('table[data-sheet-name="vendors"]').forEach(function (table) {
-            regroupVendorRows(table);
-            recalcVendorGroupTotals(table);
-        });
-        recalcVendorStats();
+        applyVendorEventType(currentEventType);
     })();
 </script>
 <style>

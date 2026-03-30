@@ -4,13 +4,17 @@
 @section('subtitle', 'Pantau item seserahan, harga, pembayaran, link, dan progres')
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal Seserahan</div><div class="metric-value" id="gift-total-price">Rp {{ number_format($totalGiftBudget, 0, ',', '.') }}</div></div></div>
-    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Final Semua Kategori</div><div class="metric-value" id="gift-total-final-all">Rp {{ number_format($totalGiftFinal, 0, ',', '.') }}</div></div></div>
+<div class="row g-3 mb-4" data-stats-panel="lamaran">
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal Seserahan</div><div class="metric-value" id="gift-total-price-lamaran">Rp {{ number_format($stats['lamaran']['totalBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Final Semua Kategori</div><div class="metric-value" id="gift-total-final-lamaran">Rp {{ number_format($stats['lamaran']['totalFinal'], 0, ',', '.') }}</div></div></div>
+</div>
+<div class="row g-3 mb-4" data-stats-panel="resepsi" style="display:none;">
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Awal Seserahan</div><div class="metric-value" id="gift-total-price-resepsi">Rp {{ number_format($stats['resepsi']['totalBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-6"><div class="metric-card"><div class="metric-label">Total Harga Final Semua Kategori</div><div class="metric-value" id="gift-total-final-resepsi">Rp {{ number_format($stats['resepsi']['totalFinal'], 0, ',', '.') }}</div></div></div>
 </div>
 
 <div class="planner-card">
-    <div class="card-header pt-3 px-3 fw-semibold">Daftar Seserahan</div>
+    <div class="card-header pt-3 px-3 fw-semibold" id="gift-card-title">Daftar Seserahan - Lamaran</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
             <table class="table table-clean table-sm align-middle mb-0" data-sheet-table data-sheet-name="gifts" data-reorder-url="{{ route('gifts.reorder') }}" data-reorder-groups-url="{{ route('gifts.reorder-groups') }}" data-enter-next-field="name" data-create-url="{{ route('gifts.store') }}" data-bulk-create-url="{{ route('gifts.bulk-store') }}" data-bulk-delete-url="{{ route('gifts.bulk-destroy') }}" data-update-url="/gifts/__ID__" data-delete-url="/gifts/__ID__" data-required="name,status">
@@ -76,8 +80,9 @@
                             $groupIndex++;
                         @endphp
                     @endif
-                    <tr data-row data-id="{{ $gift->id }}">
+                    <tr data-row data-id="{{ $gift->id }}" data-event-type="{{ $gift->event_type ?? 'lamaran' }}">
                         <td>
+                            <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $gift->event_type ?? 'lamaran' }}">
                             <input type="hidden" class="sheet-cell" data-field="sort_order" value="{{ $gift->sort_order }}">
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="{{ $gift->group_sort_order }}">
                             <div class="name-cell">
@@ -116,6 +121,7 @@
 
                 <tr data-row data-new-row="1" class="inline-add-row">
                     <td>
+                        <input type="hidden" class="sheet-cell gift-event-type-input" data-field="event_type" value="lamaran">
                         <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                         <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
                         <textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item"></textarea>
@@ -145,6 +151,7 @@
                 <template data-new-row-template>
                     <tr data-row data-new-row="1" class="inline-add-row">
                         <td>
+                            <input type="hidden" class="sheet-cell gift-event-type-input" data-field="event_type" value="lamaran">
                             <input type="hidden" class="sheet-cell" data-field="sort_order" value="0">
                             <input type="hidden" class="sheet-cell" data-field="group_sort_order" value="0">
                             <textarea rows="1" class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama item"></textarea>
@@ -179,6 +186,34 @@
 @push('page-scripts')
 <script>
     (function () {
+        var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+        var eventTypeLabels = { lamaran: 'Lamaran', resepsi: 'Resepsi' };
+        var giftCardTitle = document.getElementById('gift-card-title');
+
+        function applyGiftEventType(type) {
+            currentEventType = type;
+            document.querySelectorAll('[data-stats-panel]').forEach(function (el) {
+                el.style.display = el.dataset.statsPanel === type ? '' : 'none';
+            });
+            var table = document.querySelector('table[data-sheet-name="gifts"]');
+            if (table) {
+                table.querySelectorAll('tbody tr[data-row][data-id]').forEach(function (row) {
+                    row.style.display = (row.dataset.eventType === type) ? '' : 'none';
+                });
+                regroupGiftRows(table);
+                recalcGiftGroupTotals(table);
+            }
+            document.querySelectorAll('.gift-event-type-input').forEach(function (input) {
+                input.value = type;
+            });
+            if (giftCardTitle) giftCardTitle.textContent = 'Daftar Seserahan - ' + (eventTypeLabels[type] || type);
+            recalcGiftStats();
+        }
+
+        document.addEventListener('event-type-changed', function (event) {
+            if (event.detail && event.detail.eventType) applyGiftEventType(event.detail.eventType);
+        });
+
         var draggingRow = null;
         var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         var clientIdValue = (window.__clientId || '');
@@ -498,7 +533,9 @@
             clearGiftGroupVisualRows(tbody);
 
             var addRow = tbody.querySelector('tr[data-new-row="1"]');
-            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]')).filter(function (r) {
+                return r.style.display !== 'none';
+            });
             if (!rows.length) return;
 
             syncGroupSortFromGroupNames(table);
@@ -810,23 +847,16 @@
             var totalPrice = 0;
             var totalFinal = 0;
             rows.forEach(function (row) {
+                if (row.dataset.eventType !== currentEventType) return;
                 var priceInput = row.querySelector('[data-field="price"]');
-                if (priceInput) {
-                    totalPrice += parseCurrencyIdr(priceInput.value);
-                }
+                if (priceInput) totalPrice += parseCurrencyIdr(priceInput.value);
                 var paidInput = row.querySelector('[data-field="paid_amount"]');
-                if (paidInput) {
-                    totalFinal += parseCurrencyIdr(paidInput.value);
-                }
+                if (paidInput) totalFinal += parseCurrencyIdr(paidInput.value);
             });
-            var el = document.getElementById('gift-total-price');
-            if (el) {
-                el.textContent = (totalPrice > 0) ? formatCurrencyIdr(totalPrice) : 'Rp0';
-            }
-            var finalEl = document.getElementById('gift-total-final-all');
-            if (finalEl) {
-                finalEl.textContent = (totalFinal > 0) ? formatCurrencyIdr(totalFinal) : 'Rp0';
-            }
+            var el = document.getElementById('gift-total-price-' + currentEventType);
+            if (el) el.textContent = (totalPrice > 0) ? formatCurrencyIdr(totalPrice) : 'Rp0';
+            var finalEl = document.getElementById('gift-total-final-' + currentEventType);
+            if (finalEl) finalEl.textContent = (totalFinal > 0) ? formatCurrencyIdr(totalFinal) : 'Rp0';
         }
 
         function recalcGiftGroupTotals(table) {
@@ -834,7 +864,9 @@
             var tbody = table.querySelector('tbody');
             if (!tbody) return;
 
-            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]'));
+            var rows = Array.from(tbody.querySelectorAll('tr[data-row][data-id]')).filter(function (r) {
+                return r.style.display !== 'none';
+            });
             var groupInitialTotals = getGroupInitialTotalsMap(rows);
             var groupFinalTotals = getGroupFinalTotalsMap(rows);
 
@@ -882,8 +914,8 @@
         refreshGiftDraggableRows();
         initGiftDragDrop();
         initGiftGroupReorderControls();
+        applyGiftEventType(currentEventType);
         document.querySelectorAll('table[data-sheet-name="gifts"]').forEach(function (table) {
-            regroupGiftRows(table);
             table.dataset.rowCount = String(table.querySelectorAll('tbody tr[data-row][data-id]').length);
         });
     })();

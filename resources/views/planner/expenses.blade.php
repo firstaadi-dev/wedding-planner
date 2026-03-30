@@ -4,12 +4,14 @@
 @section('subtitle', 'Ringkas pemasukan budget, pengeluaran, dan sisa dana')
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Budget (Tipe Budget)</div><div class="metric-value" id="expense-total-budget">Rp {{ number_format($stats['totalBudget'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Expense (Manual + Sudah Dibayar)</div><div class="metric-value" id="expense-total-expense">Rp {{ number_format($stats['totalExpense'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Sisa Budget</div><div class="metric-value" id="expense-remaining-budget">Rp {{ number_format($stats['remainingBudget'], 0, ',', '.') }}</div></div></div>
-    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Hutang / Remaining</div><div class="metric-value" id="expense-total-debt">Rp {{ number_format($stats['totalDebt'], 0, ',', '.') }}</div></div></div>
+@foreach(['lamaran', 'resepsi'] as $et)
+<div class="row g-3 mb-4" data-stats-panel="{{ $et }}"@if($et !== 'lamaran') style="display:none;"@endif>
+    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Budget (Tipe Budget)</div><div class="metric-value" id="expense-total-budget-{{ $et }}">Rp {{ number_format($stats[$et]['totalBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Expense (Manual + Sudah Dibayar)</div><div class="metric-value" id="expense-total-expense-{{ $et }}">Rp {{ number_format($stats[$et]['totalExpense'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Sisa Budget</div><div class="metric-value" id="expense-remaining-budget-{{ $et }}">Rp {{ number_format($stats[$et]['remainingBudget'], 0, ',', '.') }}</div></div></div>
+    <div class="col-md-3"><div class="metric-card"><div class="metric-label">Total Hutang / Remaining</div><div class="metric-value" id="expense-total-debt-{{ $et }}">Rp {{ number_format($stats[$et]['totalDebt'], 0, ',', '.') }}</div></div></div>
 </div>
+@endforeach
 
 <div class="planner-card mb-4">
     <div class="card-header pt-3 px-3 fw-semibold">One-Glance Budget Story</div>
@@ -44,10 +46,10 @@
             <div class="col-md-4">
                 <div class="metric-card h-100">
                     <div class="metric-label mb-2">Penghematan</div>
-                    <div class="metric-value" id="savings-percentage-value">{{ number_format($stats['savingsPercentage'], 1) }}%</div>
-                    <div class="small text-muted mt-1" id="savings-nominal-note">Nominal hemat: Rp {{ number_format($stats['totalSavings'], 0, ',', '.') }}</div>
+                    <div class="metric-value" id="savings-percentage-value">{{ number_format($stats['lamaran']['savingsPercentage'], 1) }}%</div>
+                    <div class="small text-muted mt-1" id="savings-nominal-note">Nominal hemat: Rp {{ number_format($stats['lamaran']['totalSavings'], 0, ',', '.') }}</div>
                     <div class="progress mt-3" role="progressbar" aria-label="Savings percentage">
-                        <div id="savings-percentage-bar" class="progress-bar bg-info" style="width: {{ min(max($stats['savingsPercentage'], 0), 100) }}%"></div>
+                        <div id="savings-percentage-bar" class="progress-bar bg-info" style="width: {{ min(max($stats['lamaran']['savingsPercentage'], 0), 100) }}%"></div>
                     </div>
                 </div>
             </div>
@@ -65,8 +67,11 @@
                 </thead>
                 <tbody>
                 @foreach($manualExpenses as $expense)
-                    <tr data-row data-id="{{ $expense->id }}">
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $expense->name }}"></td>
+                    <tr data-row data-id="{{ $expense->id }}" data-event-type="{{ $expense->event_type ?? 'lamaran' }}">
+                        <td>
+                            <input type="hidden" class="sheet-cell" data-field="event_type" value="{{ $expense->event_type ?? 'lamaran' }}">
+                            <input class="form-control form-control-sm sheet-cell" data-field="name" value="{{ $expense->name }}">
+                        </td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="type">
                                 <option value="budget" {{ $expense->type === 'budget' ? 'selected' : '' }}>Budget</option>
@@ -87,7 +92,10 @@
                 @endforeach
 
                 <tr data-row data-new-row="1" class="inline-add-row">
-                    <td><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama transaksi"></td>
+                    <td>
+                        <input type="hidden" class="sheet-cell expense-event-type-input" data-field="event_type" value="lamaran">
+                        <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama transaksi">
+                    </td>
                     <td>
                         <select class="form-select form-select-sm sheet-cell" data-field="type">
                             <option value="budget" selected>Budget</option>
@@ -102,7 +110,10 @@
 
                 <template data-new-row-template>
                     <tr data-row data-new-row="1" class="inline-add-row">
-                        <td><input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama transaksi"></td>
+                        <td>
+                            <input type="hidden" class="sheet-cell expense-event-type-input" data-field="event_type" value="lamaran">
+                            <input class="form-control form-control-sm sheet-cell" data-field="name" placeholder="Nama transaksi">
+                        </td>
                         <td>
                             <select class="form-select form-select-sm sheet-cell" data-field="type">
                                 <option value="budget" selected>Budget</option>
@@ -123,7 +134,7 @@
     <div class="card-header pt-3 px-3 fw-semibold">Auto Tracking dari To-do & Seserahan</div>
     <div class="card-body pt-2">
         <div class="table-responsive">
-            <table class="table table-clean table-sm align-middle mb-0">
+            <table class="table table-clean table-sm align-middle mb-0" data-auto-expenses>
                 <thead>
                 <tr>
                     <th>Sumber</th>
@@ -138,7 +149,7 @@
                 </thead>
                 <tbody>
                 @forelse($autoExpenses as $expense)
-                    <tr>
+                    <tr data-row data-id="{{ $expense->id }}" data-event-type="{{ $expense->event_type ?? 'lamaran' }}">
                         <td>{{ $expense->source_type === 'task' ? 'To-Do' : 'Seserahan' }}</td>
                         <td>{{ $expense->source_type === 'task' ? 'To-Do' : ($expense->category ?: 'Seserahan') }}</td>
                         <td>{{ $expense->name }}</td>
@@ -163,16 +174,57 @@
 @push('page-scripts')
 <script>
     (function () {
-        var state = {
-            manualBudget: Number(@json($stats['manualBudget'])) || 0,
-            manualExpense: Number(@json($stats['manualExpense'])) || 0,
-            autoBase: Number(@json($stats['autoBase'])) || 0,
-            autoPaid: Number(@json($stats['autoPaid'])) || 0,
-            autoRemaining: Number(@json($stats['autoRemaining'])) || 0,
-            totalSavings: Number(@json($stats['totalSavings'])) || 0,
-            totalDebt: Number(@json($stats['totalDebt'])) || 0,
-            savingsPercentage: Number(@json($stats['savingsPercentage'])) || 0,
+        var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+
+        var stateByEventType = {
+            lamaran: {
+                manualBudget: Number(@json($stats['lamaran']['manualBudget'])) || 0,
+                manualExpense: Number(@json($stats['lamaran']['manualExpense'])) || 0,
+                autoBase: Number(@json($stats['lamaran']['autoBase'])) || 0,
+                autoPaid: Number(@json($stats['lamaran']['autoPaid'])) || 0,
+                autoRemaining: Number(@json($stats['lamaran']['autoRemaining'])) || 0,
+                totalSavings: Number(@json($stats['lamaran']['totalSavings'])) || 0,
+                totalDebt: Number(@json($stats['lamaran']['totalDebt'])) || 0,
+                savingsPercentage: Number(@json($stats['lamaran']['savingsPercentage'])) || 0,
+            },
+            resepsi: {
+                manualBudget: Number(@json($stats['resepsi']['manualBudget'])) || 0,
+                manualExpense: Number(@json($stats['resepsi']['manualExpense'])) || 0,
+                autoBase: Number(@json($stats['resepsi']['autoBase'])) || 0,
+                autoPaid: Number(@json($stats['resepsi']['autoPaid'])) || 0,
+                autoRemaining: Number(@json($stats['resepsi']['autoRemaining'])) || 0,
+                totalSavings: Number(@json($stats['resepsi']['totalSavings'])) || 0,
+                totalDebt: Number(@json($stats['resepsi']['totalDebt'])) || 0,
+                savingsPercentage: Number(@json($stats['resepsi']['savingsPercentage'])) || 0,
+            },
         };
+        var state = stateByEventType[currentEventType];
+
+        document.addEventListener('event-type-changed', function (event) {
+            if (!event.detail || !event.detail.eventType) return;
+            currentEventType = event.detail.eventType;
+            state = stateByEventType[currentEventType] || stateByEventType['lamaran'];
+
+            document.querySelectorAll('[data-stats-panel]').forEach(function (el) {
+                el.style.display = el.dataset.statsPanel === currentEventType ? '' : 'none';
+            });
+
+            // Show/hide manual expense rows
+            document.querySelectorAll('table[data-create-url="{{ route('expenses.store') }}"] tbody tr[data-row][data-id]').forEach(function (row) {
+                row.style.display = (row.dataset.eventType === currentEventType) ? '' : 'none';
+            });
+
+            // Show/hide auto expense rows
+            document.querySelectorAll('table[data-auto-expenses] tbody tr[data-row][data-id]').forEach(function (row) {
+                row.style.display = (row.dataset.eventType === currentEventType) ? '' : 'none';
+            });
+
+            document.querySelectorAll('.expense-event-type-input').forEach(function (input) {
+                input.value = currentEventType;
+            });
+
+            renderBudgetStory();
+        });
 
         function formatRupiah(amount) {
             if (!Number.isFinite(amount) || amount === 0) return 'Rp 0';
@@ -341,10 +393,11 @@
 
         function repaintMetrics() {
             var totals = getTotals();
-            var el1 = document.getElementById('expense-total-budget');
-            var el2 = document.getElementById('expense-total-expense');
-            var el3 = document.getElementById('expense-remaining-budget');
-            var el4 = document.getElementById('expense-total-debt');
+            var et = currentEventType;
+            var el1 = document.getElementById('expense-total-budget-' + et);
+            var el2 = document.getElementById('expense-total-expense-' + et);
+            var el3 = document.getElementById('expense-remaining-budget-' + et);
+            var el4 = document.getElementById('expense-total-debt-' + et);
             if (el1) el1.textContent = formatRupiah(totals.totalBudget);
             if (el2) el2.textContent = formatRupiah(totals.totalExpense);
             if (el3) el3.textContent = formatRupiah(totals.remainingBudget);
@@ -357,6 +410,7 @@
             var totalExpense = 0;
 
             rows.forEach(function (row) {
+                if (row.dataset.eventType && row.dataset.eventType !== currentEventType) return;
                 var typeInput = row.querySelector('[data-field="type"]');
                 var amountInput = row.querySelector('[data-field="amount"]');
                 if (!typeInput || !amountInput) return;
@@ -387,6 +441,16 @@
             }
         });
 
+        // Apply initial event type filtering
+        document.querySelectorAll('[data-stats-panel]').forEach(function (el) {
+            el.style.display = el.dataset.statsPanel === currentEventType ? '' : 'none';
+        });
+        document.querySelectorAll('table[data-create-url="{{ route('expenses.store') }}"] tbody tr[data-row][data-id]').forEach(function (row) {
+            row.style.display = (row.dataset.eventType === currentEventType || !row.dataset.eventType) ? '' : 'none';
+        });
+        document.querySelectorAll('table[data-auto-expenses] tbody tr[data-row][data-id]').forEach(function (row) {
+            row.style.display = (row.dataset.eventType === currentEventType || !row.dataset.eventType) ? '' : 'none';
+        });
         bindAmountCurrencyInputs();
         repaintMetrics();
         repaintStoryPanel();

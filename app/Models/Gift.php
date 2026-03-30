@@ -10,6 +10,7 @@ class Gift extends Model
     use HasFactory;
 
     protected $fillable = [
+        'event_type',
         'name',
         'brand',
         'group_name',

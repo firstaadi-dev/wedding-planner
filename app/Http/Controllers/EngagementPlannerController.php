@@ -80,12 +80,22 @@ class EngagementPlannerController extends Controller
             ->orderBy('vendor_name')
             ->pluck('vendor_name');
 
+        $lamaranTasks = $tasks->where('event_type', 'lamaran')->values();
+        $resepsiTasks = $tasks->where('event_type', 'resepsi')->values();
+
         return view('planner.tasks', [
-            'tasks' => $tasks,
+            'lamaranTasks' => $lamaranTasks,
+            'resepsiTasks' => $resepsiTasks,
             'vendorNames' => $vendorNames,
             'stats' => [
-                'openTasks' => $tasks->whereIn('task_status', ['not_started', 'in_progress'])->count(),
-                'doneTasks' => $tasks->where('task_status', 'done')->count(),
+                'lamaran' => [
+                    'openTasks' => $lamaranTasks->whereIn('task_status', ['not_started', 'in_progress'])->count(),
+                    'doneTasks' => $lamaranTasks->where('task_status', 'done')->count(),
+                ],
+                'resepsi' => [
+                    'openTasks' => $resepsiTasks->whereIn('task_status', ['not_started', 'in_progress'])->count(),
+                    'doneTasks' => $resepsiTasks->where('task_status', 'done')->count(),
+                ],
             ],
         ]);
     }
@@ -98,12 +108,22 @@ class EngagementPlannerController extends Controller
             ->orderBy('id')
             ->get();
 
+        $lamaranVendors = $vendors->where('event_type', 'lamaran')->values();
+        $resepsiVendors = $vendors->where('event_type', 'resepsi')->values();
+
         return view('planner.vendors', [
             'vendors' => $vendors,
             'stats' => [
-                'totalVendors' => $vendors->count(),
-                'activeVendors' => $vendors->whereIn('status', ['not_started', 'in_progress'])->count(),
-                'doneVendors' => $vendors->where('status', 'done')->count(),
+                'lamaran' => [
+                    'totalVendors' => $lamaranVendors->count(),
+                    'activeVendors' => $lamaranVendors->whereIn('status', ['not_started', 'in_progress'])->count(),
+                    'doneVendors' => $lamaranVendors->where('status', 'done')->count(),
+                ],
+                'resepsi' => [
+                    'totalVendors' => $resepsiVendors->count(),
+                    'activeVendors' => $resepsiVendors->whereIn('status', ['not_started', 'in_progress'])->count(),
+                    'doneVendors' => $resepsiVendors->where('status', 'done')->count(),
+                ],
             ],
         ]);
     }
@@ -118,10 +138,23 @@ class EngagementPlannerController extends Controller
             ->orderBy('id')
             ->get();
 
+        $lamaranGifts = $gifts->where('event_type', 'lamaran')->values();
+        $resepsiGifts = $gifts->where('event_type', 'resepsi')->values();
+
         return view('planner.gifts', [
             'gifts' => $gifts,
-            'totalGiftBudget' => (float) Gift::sum('price'),
-            'totalGiftFinal' => (float) Gift::sum('paid_amount'),
+            'stats' => [
+                'lamaran' => [
+                    'totalBudget' => (float) $lamaranGifts->sum('price'),
+                    'totalFinal' => (float) $lamaranGifts->sum('paid_amount'),
+                ],
+                'resepsi' => [
+                    'totalBudget' => (float) $resepsiGifts->sum('price'),
+                    'totalFinal' => (float) $resepsiGifts->sum('paid_amount'),
+                ],
+            ],
+            'totalGiftBudget' => (float) $gifts->sum('price'),
+            'totalGiftFinal' => (float) $gifts->sum('paid_amount'),
         ]);
     }
 
@@ -137,45 +170,50 @@ class EngagementPlannerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $manualBudget = (float) Expense::where('entry_mode', 'manual')->where('type', 'budget')->sum('amount');
-        $manualExpense = (float) Expense::where('entry_mode', 'manual')->where('type', 'expense')->sum('amount');
-        $autoBase = (float) Expense::where('entry_mode', 'auto')->sum('base_price');
-        $autoPaid = (float) Expense::where('entry_mode', 'auto')->sum('down_payment');
-        $autoRemaining = (float) Expense::where('entry_mode', 'auto')->sum('remaining_amount');
-        $paidAutoExpenses = $autoExpenses->filter(function (Expense $expense) {
-            return (float) $expense->paid_amount > 0;
-        });
-        $totalSavings = (float) $paidAutoExpenses->sum(function (Expense $expense) {
-            return max((float) $expense->base_price - (float) $expense->paid_amount, 0);
-        });
-        $totalDebt = (float) $autoExpenses->sum(function (Expense $expense) {
-            return max((float) $expense->remaining_amount, 0);
-        });
-        $paidAutoBase = (float) $paidAutoExpenses->sum(function (Expense $expense) {
-            return max((float) $expense->base_price, 0);
-        });
-        $savingsPercentage = $paidAutoBase > 0 ? ($totalSavings / $paidAutoBase) * 100 : 0.0;
-
-        $totalBudget = $manualBudget;
-        $totalExpense = $manualExpense + $autoPaid;
-
         return view('planner.expenses', [
             'manualExpenses' => $manualExpenses,
             'autoExpenses' => $autoExpenses,
             'stats' => [
-                'totalBudget' => $totalBudget,
-                'totalExpense' => $totalExpense,
-                'remainingBudget' => $totalBudget - $totalExpense,
-                'manualBudget' => $manualBudget,
-                'manualExpense' => $manualExpense,
-                'autoBase' => $autoBase,
-                'autoPaid' => $autoPaid,
-                'autoRemaining' => $autoRemaining,
-                'totalSavings' => $totalSavings,
-                'totalDebt' => $totalDebt,
-                'savingsPercentage' => $savingsPercentage,
+                'lamaran' => $this->calcExpenseStats(
+                    $manualExpenses->where('event_type', 'lamaran')->values(),
+                    $autoExpenses->where('event_type', 'lamaran')->values()
+                ),
+                'resepsi' => $this->calcExpenseStats(
+                    $manualExpenses->where('event_type', 'resepsi')->values(),
+                    $autoExpenses->where('event_type', 'resepsi')->values()
+                ),
             ],
         ]);
+    }
+
+    private function calcExpenseStats($manualExpenses, $autoExpenses): array
+    {
+        $manualBudget = (float) $manualExpenses->where('type', 'budget')->sum('amount');
+        $manualExpense = (float) $manualExpenses->where('type', 'expense')->sum('amount');
+        $autoBase = (float) $autoExpenses->sum('base_price');
+        $autoPaid = (float) $autoExpenses->sum('down_payment');
+        $autoRemaining = (float) $autoExpenses->sum('remaining_amount');
+        $paidAutoExpenses = $autoExpenses->filter(fn (Expense $e) => (float) $e->paid_amount > 0);
+        $totalSavings = (float) $paidAutoExpenses->sum(fn (Expense $e) => max((float) $e->base_price - (float) $e->paid_amount, 0));
+        $totalDebt = (float) $autoExpenses->sum(fn (Expense $e) => max((float) $e->remaining_amount, 0));
+        $paidAutoBase = (float) $paidAutoExpenses->sum(fn (Expense $e) => max((float) $e->base_price, 0));
+        $savingsPercentage = $paidAutoBase > 0 ? ($totalSavings / $paidAutoBase) * 100 : 0.0;
+        $totalBudget = $manualBudget;
+        $totalExpense = $manualExpense + $autoPaid;
+
+        return [
+            'totalBudget' => $totalBudget,
+            'totalExpense' => $totalExpense,
+            'remainingBudget' => $totalBudget - $totalExpense,
+            'manualBudget' => $manualBudget,
+            'manualExpense' => $manualExpense,
+            'autoBase' => $autoBase,
+            'autoPaid' => $autoPaid,
+            'autoRemaining' => $autoRemaining,
+            'totalSavings' => $totalSavings,
+            'totalDebt' => $totalDebt,
+            'savingsPercentage' => $savingsPercentage,
+        ];
     }
 
     public function storeGuest(Request $request)
@@ -790,6 +828,7 @@ class EngagementPlannerController extends Controller
     private function taskRules(): array
     {
         return [
+            'event_type' => ['nullable', 'in:lamaran,resepsi'],
             'title' => ['required', 'string', 'max:255'],
             'vendor' => ['nullable', 'string', 'max:255'],
             'price' => ['nullable', 'numeric', 'min:0'],
@@ -806,6 +845,7 @@ class EngagementPlannerController extends Controller
     private function vendorRules(): array
     {
         return [
+            'event_type' => ['nullable', 'in:lamaran,resepsi'],
             'vendor_name' => ['required', 'string', 'max:255'],
             'group_name' => ['nullable', 'string', 'max:150'],
             'group_sort_order' => ['nullable', 'integer', 'min:0'],
@@ -821,6 +861,7 @@ class EngagementPlannerController extends Controller
     private function giftRules(): array
     {
         return [
+            'event_type' => ['nullable', 'in:lamaran,resepsi'],
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'group_name' => ['nullable', 'string', 'max:150'],
@@ -838,6 +879,7 @@ class EngagementPlannerController extends Controller
     private function expenseRules(): array
     {
         return [
+            'event_type' => ['nullable', 'in:lamaran,resepsi'],
             'name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
             'type' => ['required', 'in:budget,expense'],
@@ -1170,6 +1212,7 @@ class EngagementPlannerController extends Controller
                 'source_id' => $task->id,
             ],
             [
+                'event_type' => $task->event_type ?? 'lamaran',
                 'entry_mode' => 'auto',
                 'name' => $task->title,
                 'category' => 'To-Do',
@@ -1203,6 +1246,7 @@ class EngagementPlannerController extends Controller
                 'source_id' => $gift->id,
             ],
             [
+                'event_type' => $gift->event_type ?? 'lamaran',
                 'entry_mode' => 'auto',
                 'name' => $gift->name,
                 'category' => $this->normalizeGiftGroupName($gift->group_name) ?? 'Seserahan',
