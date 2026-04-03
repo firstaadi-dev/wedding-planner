@@ -1305,17 +1305,16 @@
                 if (input.dataset.phoneDisplay === 'id') {
                     bindPhoneDisplayInput(input);
                 }
-                var enterTriggeredBlur = false;
-
                 input.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
                         event.preventDefault();
-                        enterTriggeredBlur = true;
+                        row._enterBlurPending = true;
                         row.dataset.pendingEnterField = row.dataset.newRow === '1'
                             ? (table.dataset.enterNextField || input.dataset.field || '')
                             : (input.dataset.field || '');
                         input.blur();
                         setTimeout(function () {
+                            row._enterBlurPending = false;
                             focusNextRowCell(table, row, input);
                         }, 0);
                     }
@@ -1326,9 +1325,7 @@
                 });
 
                 input.addEventListener('blur', function () {
-                    var immediate = enterTriggeredBlur;
-                    enterTriggeredBlur = false;
-                    if (immediate) {
+                    if (row._enterBlurPending) {
                         clearTimeout(row._autoSaveTimer);
                         syncRow(table, row, config).catch(console.error);
                     } else {
