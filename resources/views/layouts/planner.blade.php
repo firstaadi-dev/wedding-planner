@@ -1250,6 +1250,10 @@
         if (existingInline) return existingInline;
         var newRow = buildNewRow(table);
         if (!newRow) return null;
+        var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+        newRow.querySelectorAll('[data-field="event_type"]').forEach(function(input) {
+            input.value = currentEventType;
+        });
         table.querySelector('tbody').appendChild(newRow);
         registerRowHandlers(table, newRow, config);
         return newRow;
@@ -1301,9 +1305,12 @@
                 if (input.dataset.phoneDisplay === 'id') {
                     bindPhoneDisplayInput(input);
                 }
+                var enterTriggeredBlur = false;
+
                 input.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
                         event.preventDefault();
+                        enterTriggeredBlur = true;
                         row.dataset.pendingEnterField = row.dataset.newRow === '1'
                             ? (table.dataset.enterNextField || input.dataset.field || '')
                             : (input.dataset.field || '');
@@ -1319,7 +1326,17 @@
                 });
 
                 input.addEventListener('blur', function () {
-                    syncRow(table, row, config).catch(console.error);
+                    var immediate = enterTriggeredBlur;
+                    enterTriggeredBlur = false;
+                    if (immediate) {
+                        clearTimeout(row._autoSaveTimer);
+                        syncRow(table, row, config).catch(console.error);
+                    } else {
+                        clearTimeout(row._autoSaveTimer);
+                        row._autoSaveTimer = setTimeout(function () {
+                            syncRow(table, row, config).catch(console.error);
+                        }, 2000);
+                    }
                 });
 
                 input.addEventListener('change', function () {
@@ -1332,6 +1349,7 @@
 
                 input.addEventListener('input', function () {
                     markRowLocalEdit(row);
+                    clearTimeout(row._autoSaveTimer);
                 });
 
                 input.addEventListener('paste', function (event) {
@@ -1550,6 +1568,10 @@
 
                 const newRow = buildNewRow(table);
                 if (newRow) {
+                    var currentEventType = window.__getEventType ? window.__getEventType() : 'lamaran';
+                    newRow.querySelectorAll('[data-field="event_type"]').forEach(function(input) {
+                        input.value = currentEventType;
+                    });
                     table.querySelector('tbody').appendChild(newRow);
                     registerRowHandlers(table, newRow, config);
                     const preferredField = row.dataset.pendingEnterField || table.dataset.enterNextField || 'name';
