@@ -92,6 +92,7 @@
                                 <option value="not_started" {{ $vendor->status === 'not_started' ? 'selected' : '' }}>Need Contact</option>
                                 <option value="in_progress" {{ $vendor->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                                 <option value="done" {{ $vendor->status === 'done' ? 'selected' : '' }}>Booked</option>
+                                <option value="canceled" {{ $vendor->status === 'canceled' ? 'selected' : '' }}>Canceled</option>
                             </select>
                         </td>
                         <td class="row-actions">
@@ -122,6 +123,7 @@
                             <option value="not_started" selected>Need Contact</option>
                             <option value="in_progress">In Progress</option>
                             <option value="done">Booked</option>
+                            <option value="canceled">Canceled</option>
                         </select>
                     </td>
                     <td class="row-actions"></td>
@@ -146,6 +148,7 @@
                                 <option value="not_started" selected>Need Contact</option>
                                 <option value="in_progress">In Progress</option>
                                 <option value="done">Booked</option>
+                                <option value="canceled">Canceled</option>
                             </select>
                         </td>
                         <td class="row-actions"></td>

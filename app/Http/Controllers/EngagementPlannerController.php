@@ -854,7 +854,7 @@ class EngagementPlannerController extends Controller
             'contact_email' => ['nullable', 'string', 'max:255'],
             'website' => ['nullable', 'string', 'max:2048'],
             'reference' => ['nullable', 'string', 'max:255'],
-            'status' => ['required', 'in:not_started,in_progress,done'],
+            'status' => ['required', 'in:not_started,in_progress,done,canceled'],
         ];
     }
 
@@ -1016,6 +1016,7 @@ class EngagementPlannerController extends Controller
             'not_started' => 1,
             'in_progress' => 2,
             'done' => 3,
+            'canceled' => 4, // sticky: auto-upsert (e.g. from a task) won't revive a canceled vendor
         ];
 
         $currentStatus = $current ?? 'not_started';
