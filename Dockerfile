@@ -1,10 +1,10 @@
-FROM php:7.4-apache
+FROM php:8.3-apache
 
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libpq-dev \
-    && docker-php-ext-install pdo_mysql pdo_pgsql opcache \
+    && docker-php-ext-install pdo_pgsql opcache \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 

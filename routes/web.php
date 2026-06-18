@@ -63,7 +63,7 @@ if (!config('app.disable_sse')) {
     Route::get('/events', [SseController::class, 'stream'])
         ->name('events.stream')
         ->withoutMiddleware([
-            \App\Http\Middleware\VerifyCsrfToken::class,
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
